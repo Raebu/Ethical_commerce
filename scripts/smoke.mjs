@@ -15,7 +15,7 @@ try{
  let ok=false;
  for(let n=0;n<120;n++){if(server.exitCode!==null)throw Error('Worker failed: '+output);try{ok=(await call('/api/health')).code===200;if(ok)break}catch{}await pause(250)}
  if(!ok)throw Error('Worker startup timed out: '+output);
- assert.equal((await call('/')).code,200);
+ const home=await call('/');assert.equal(home.code,200);assert.match(home.headers.get('content-security-policy')||'',/script-src 'self'/);assert.equal(home.headers.get('x-robots-tag'),'noindex, nofollow, noarchive');
  const ready=await call('/api/ready');assert.equal(ready.code,200);assert.equal(ready.data.ready,true);
  const owner=await call('/api/auth/register',{method:'POST',body:{email:'owner-'+crypto.randomUUID()+'@example.test',password:'verystrongpassphrase2026'}});
  assert.equal(owner.code,201,JSON.stringify(owner.data));
@@ -41,11 +41,21 @@ try{
  assert.equal(catalog.code,200);assert.match(catalog.data,/Cotton Tote/);
  assert.equal((await call('/api/reports',{method:'POST',body:{productId,category:'misleading_claim',message:'Please investigate the origin statement being made.'}})).code,201);
  assert.equal((await call('/api/reports?storeId='+storeId,{token:cookie})).data.reports.length,1);
+ const sensitive=await call('/api/reports',{method:'POST',body:{productId,category:'worker_welfare',message:'Sensitive workplace report that must not be shared.'}});
+ assert.equal(sensitive.code,503,'Seller-visible whistleblower disclosure must be refused');
+ const concern={productId,category:'misleading_claim',message:'Please investigate the origin claim documented for this product.'};
+ for(let i=0;i<3;i++)assert.equal((await call('/api/reports',{method:'POST',body:concern})).code,201);
+ const reportLimit=await call('/api/reports',{method:'POST',body:concern});
+ assert.equal(reportLimit.code,429,'Public report submissions must be throttled');
+ assert.ok(Number(reportLimit.headers.get('retry-after'))>0);
  const other=await call('/api/auth/register',{method:'POST',body:{email:'other-'+crypto.randomUUID()+'@example.test',password:'anotherlongpassphrase2026'}});
  assert.equal(other.code,201);const otherCookie=other.headers.get('set-cookie')?.split(';')[0];
  assert.equal((await call('/api/products?storeId='+storeId,{token:otherCookie})).code,403);
  assert.equal((await call('/api/reports?storeId='+storeId,{token:otherCookie})).code,403);
+ const unknownEmail='unknown-'+crypto.randomUUID()+'@example.test';
+ for(let i=0;i<8;i++)assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,401);
+ assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,429,'Password guessing must be throttled');
  const csrf=await fetch(base+'/api/stores',{method:'POST',headers:{origin:'https://untrusted.example','content-type':'application/json',cookie},body:JSON.stringify({name:'Attack'})});
  assert.equal(csrf.status,403);
- console.log('PASS end-to-end: register, isolation, store, product, supplier, claim, production trace, marketplace record, CSV, complaints and CSRF');
+ console.log('PASS end-to-end: registration, isolation, store, catalogue, passport, claims, sensitive-report protection, rate limits, CSP, CSRF, D1 and CSV');
 }finally{try{process.kill(-server.pid,'SIGTERM')}catch{server.kill('SIGTERM')}}
