@@ -38,6 +38,10 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
 async function api(req:Request,env:Env):Promise<Response>{
  const u=new URL(req.url),path=u.pathname,method=req.method;
  if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:'disabled',external_publishing:'disabled'});
+ if(path==='/api/ready'&&method==='GET'){
+  try{await env.DB.prepare('SELECT id FROM users LIMIT 1').first();return json({ready:true,database:'configured',schema:'available'});}
+  catch{return json({ready:false,database:'configured',schema:'missing',next:'Apply remote D1 migrations'},503)}
+ }
  if(!['GET','HEAD','OPTIONS'].includes(method)&&!sameOrigin(req))return error('Origin validation failed',403);
  if(method==='GET'&&path==='/api/public/products'){
   const search=str(u.searchParams.get('search'),80);
