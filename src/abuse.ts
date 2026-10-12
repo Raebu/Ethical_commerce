@@ -1,4 +1,5 @@
-import {digest,Env,json} from './security';
+import type {Env} from './security.ts';
+import {digest,json} from './security.ts';
 
 /** Best-effort request throttling on top of Cloudflare edge protections. */
 export async function throttle(req:Request,env:Env,kind:string,identity:string,limit:number,windowSeconds:number):Promise<Response|null>{
