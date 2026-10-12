@@ -1,0 +1,22 @@
+name: Staging no-charge smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/staging-smoke.ts
+      - tests/staging-smoke.test.ts
+      - .github/workflows/staging-smoke.yml
+permissions:
+  contents: read
+jobs:
+  verify-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check staging endpoints without credentials or financial side effects
+        run: node --experimental-strip-types scripts/staging-smoke.ts
