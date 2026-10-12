@@ -1,11 +1,8 @@
 import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps} from './commercial-utils';
 import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
+import {cancelUnpaid,reserveStockStatements} from './inventory';
 
-async function cancelUnpaid(env:CommerceEnv,orderId:string):Promise<void>{
- // The SQL trigger returns reserved quantities exactly once on pending -> cancelled.
- await env.DB.prepare("UPDATE orders SET status='cancelled',updated_at=datetime('now') WHERE id=? AND status='pending_payment'").bind(orderId).run();
-}
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(env.SALES_ENABLED!=='true'||!env.STRIPE_SECRET_KEY||env.STRIPE_TAX_ENABLED!=='true')
   return error('Live checkout is disabled until verified payments, tax and consumer safeguards are configured',503);
@@ -43,8 +40,7 @@ export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  const batch=[
   env.DB.prepare('INSERT INTO orders(id,store_id,client_key_hash,access_token_hash,subtotal_minor,stripe_connected_account,session_expires_at) VALUES(?,?,?,?,?,?,?)')
    .bind(orderId,storeId,keyHash,await digest(token),subtotal,store.stripe_account_id,expiresAt),
-  ...products.map(p=>env.DB.prepare('INSERT INTO order_items(id,order_id,product_id,product_name,quantity,unit_price_minor) VALUES(?,?,?,?,?,?)')
-   .bind(crypto.randomUUID(),orderId,p.id,p.name,p.quantity,p.price_minor))
+  ...reserveStockStatements(env,orderId,products)
  ];
  try{await env.DB.batch(batch)}catch{return error('A product was sold or changed while preparing checkout; refresh your cart',409)}
  try{
