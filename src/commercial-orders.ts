@@ -1,11 +1,11 @@
-import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps} from './commercial-utils';
+import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils';
 import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
 import {cancelUnpaid,reserveStockStatements} from './inventory';
 import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications';
 
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
- if(env.SALES_ENABLED!=='true'||!env.STRIPE_SECRET_KEY||env.STRIPE_TAX_ENABLED!=='true')
+ if(!liveCheckoutConfigured(env))
   return error('Live checkout is disabled until verified payments, tax and consumer safeguards are configured',503);
  const limited=await throttle(req,env,'checkout','new-order',10,3600);if(limited)return limited;
  const b=await readBody(req),storeId=cleanId(b.storeId),key=textField(b.idempotencyKey,100);
