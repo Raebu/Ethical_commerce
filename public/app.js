@@ -41,6 +41,7 @@ async function passport(productId){
    const legal=info.legal_seller_name?'<div class="evidence-entry"><strong>Legal seller: '+h(info.legal_seller_name)+'</strong><p>'+h(info.trading_address||'Address not provided')+'</p><p>Customer support: '+h(info.contact_email||'Not disclosed')+'</p><div class="row">'+urls.filter(x=>image(x[1])).map(x=>'<a href="'+h(x[1])+'" target="_blank" rel="noopener noreferrer" class="small">'+h(x[0])+' ↗</a>').join('')+'</div></div>':'<div class="notice">This seller has not completed its legal trading disclosures.</div>';
    target.insertAdjacentHTML('beforeend',legal);
    if(hinfo.payments==='configuration-enabled'&&urls.every(x=>image(x[1]))){
+    const offlineNotice=target.querySelector('.notice');if(offlineNotice)offlineNotice.remove();
     target.insertAdjacentHTML('beforeend','<div class="panel"><h3>Secure seller checkout</h3><p class="small muted">Available for verified approved stores only. Stripe Checkout calculates applicable tax and shows the final payable total.</p><label><input id="ack-policies" type="checkbox"> I have reviewed the seller’s returns, shipping, privacy and terms disclosures.</label><button class="btn btn-dark" data-buy="'+h(p.id)+'" data-store="'+h(p.store_id)+'">Continue to secure checkout ↗</button></div>');
    }
   }
