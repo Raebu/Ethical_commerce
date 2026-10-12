@@ -6,6 +6,7 @@ export interface CommerceEnv extends Env {
  STRIPE_SECRET_KEY?:string;
  STRIPE_CONNECT_WEBHOOK_SECRET?:string;
  SALES_ENABLED?:string;
+ STRIPE_TAX_ENABLED?:string;
  PUBLISHING_ENABLED?:string;
  ENCRYPTION_MASTER_KEY?:string;
 }
