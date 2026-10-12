@@ -9,6 +9,11 @@ export function buildStagingConfig(example,production,uuid,confirmation){
   if(!existing||!pattern.test(existing))throw Error('Production database identity could not be checked');
   if(existing.toLowerCase()===uuid.toLowerCase())throw Error('Refusing to reuse production D1');
   if(!example.includes('RUNTIME_TIER = "staging"')||!example.includes('name = "ethical-commerce-staging"'))throw Error('Wrong deployment target');
+  // Require the staging sender to be version-controlled alongside other public vars.
+  // Resend's secret API key must remain exclusively in Cloudflare settings.
+  if(!example.includes('EMAIL_FROM = "Ethical Commerce <verification@theraeburngroup.com>"'))
+    throw Error('Missing Ethical Commerce staging transactional sender');
+  if(/^\s*RESEND_API_KEY\s*=/m.test(example))throw Error('Resend API credentials must never appear in the Wrangler template');
   for(const flag of ['SALES_ENABLED','PUBLISHING_ENABLED','TEST_CHECKOUT_ENABLED','NOTIFICATIONS_ENABLED']){
     if(!example.includes(flag+' = "false"'))throw Error('Unsafe staging release toggle '+flag);
   }

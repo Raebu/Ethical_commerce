@@ -24,6 +24,8 @@ migrations_dir = "migrations"
 
 [vars]
 APP_NAME = "Ethical Commerce Staging"
+# Public sending identity only. The Resend API key stays a Cloudflare secret.
+EMAIL_FROM = "Ethical Commerce <verification@theraeburngroup.com>"
 RUNTIME_TIER = "staging"
 TEST_CHECKOUT_ENABLED = "false"
 STRIPE_TAX_ENABLED = "false"
