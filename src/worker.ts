@@ -96,6 +96,9 @@ async function api(req:Request,env:Env):Promise<Response>{
  }
  const user=await session(req,env);
  if(!user)return error('Sign in required',401);
+ if(method==='POST'&&['/api/stores','/api/suppliers','/api/products','/api/evidence','/api/claims','/api/trace','/api/listings'].includes(path)){
+  const limited=await throttle(req,env,'merchant-create',user.id,120,3600);if(limited)return limited;
+ }
  if(method==='POST'&&path==='/api/auth/logout'){
   const token=req.headers.get('cookie')?.match(/ec_session=([0-9a-f]{64})/)?.[1];
   if(token)await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await digest(token)).run();
