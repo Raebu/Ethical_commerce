@@ -97,10 +97,10 @@ async function consumerRequest(req:Request,env:CommerceEnv):Promise<Response>{
  const limited=await throttle(req,env,'consumer-request','new',4,3600);if(limited)return limited;
  const order=await env.DB.prepare('SELECT id,store_id,access_token_hash FROM orders WHERE id=?').bind(orderId).first<any>();
  if(!order||order.access_token_hash!==await digest(token))return error('Order not found',404);
+ const requestId=crypto.randomUUID();
  await env.DB.prepare('INSERT INTO consumer_requests(id,order_id,store_id,kind,details,contact_email) VALUES(?,?,?,?,?,?)')
-  .bind(crypto.randomUUID(),orderId,order.store_id,kind,details,contact).run();
- const last=await env.DB.prepare('SELECT id FROM consumer_requests WHERE order_id=? ORDER BY rowid DESC LIMIT 1').bind(orderId).first<{id:string}>();
- if(last)await queueConsumerRequestNotification(env,orderId,last.id);
+  .bind(requestId,orderId,order.store_id,kind,details,contact).run();
+ await queueConsumerRequestNotification(env,orderId,requestId);
  return json({received:true,note:'Your request was recorded for the legal seller. A seller response is still required.'},201);
 }
 async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
