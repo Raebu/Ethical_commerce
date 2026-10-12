@@ -58,7 +58,7 @@ async function api(req:Request,env:Env):Promise<Response>{
  const u=new URL(req.url),path=u.pathname,method=req.method;
  if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:((env as CommerceEnv).SALES_ENABLED==='true'?'configuration-enabled':'disabled'),external_publishing:((env as CommerceEnv).PUBLISHING_ENABLED==='true'?'configuration-enabled':'disabled')});
  if(path==='/api/ready'&&method==='GET'){
-  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters','merchant_compliance','orders','order_items','email_challenges','independent_assessments','channel_connections']){
+  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters','merchant_compliance','orders','order_items','email_challenges','independent_assessments','channel_connections','supplier_order_settings','purchase_orders','purchase_order_items','notification_outbox']){
    const result=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
    if(!result)throw Error('Missing schema');
   }
