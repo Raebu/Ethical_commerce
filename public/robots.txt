@@ -1,0 +1,3 @@
+# Ethical Commerce is a pre-launch preview. Do not index merchant listings or accounts.
+User-agent: *
+Disallow: /
