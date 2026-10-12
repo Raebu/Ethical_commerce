@@ -37,6 +37,10 @@ export async function channelRoutes(req:Request,env:CommerceEnv):Promise<Respons
   const con=await env.DB.prepare('SELECT * FROM channel_connections WHERE store_id=? AND channel=?').bind(storeId,channel).first<any>();
   if(!con||con.status==='disabled')return error('Connected WooCommerce store required',403);
   const domain=validShopDomain(con.base_url,'woocommerce');
+  // Allowlisted destinations must be approved by the platform operator before any outbound credentialed API call.
+  const allowed=(env.ALLOWED_PUBLISHER_DOMAINS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  if(!domain||!allowed.includes(new URL(domain).hostname.toLowerCase()))
+   return error('This seller domain has not passed outbound API destination review',403);
   if(!domain||domain!==con.base_url)return error('Untrusted external store domain',403);
   const keys=JSON.parse(await decrypt(env,con.encrypted_credentials));
   const auth=btoa(keys.consumerKey+':'+keys.consumerSecret);
