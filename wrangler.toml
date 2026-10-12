@@ -11,8 +11,8 @@ not_found_handling = "single-page-application"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "ethical-commerce"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "ethicalcommerce"
+database_id = "5070811a-9990-4ae3-bd72-cf394ee63be6"
 migrations_dir = "migrations"
 
 [vars]
