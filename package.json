@@ -1,0 +1,22 @@
+{
+  "name": "ethical-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "check": "npm run typecheck && npm run test",
+    "db:local": "wrangler d1 migrations apply ethical-commerce --local",
+    "db:remote": "wrangler d1 migrations apply ethical-commerce --remote",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261011.1",
+    "@types/node": "^22.16.0",
+    "typescript": "^5.9.2",
+    "wrangler": "^4.37.0"
+  }
+}
