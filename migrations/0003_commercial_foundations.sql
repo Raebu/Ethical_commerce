@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS orders (
  id TEXT PRIMARY KEY,
  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
  client_key_hash TEXT NOT NULL UNIQUE,
+ access_token_hash TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'pending_payment' CHECK(status IN ('pending_payment','paid','cancelled','fulfilled','refunded','partially_refunded')),
  currency TEXT NOT NULL DEFAULT 'GBP' CHECK(currency='GBP'),
  subtotal_minor INTEGER NOT NULL CHECK(subtotal_minor>=0),
