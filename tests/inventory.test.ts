@@ -29,7 +29,7 @@ class LocalD1 {
   const base=readFileSync(new URL('../migrations/0001_initial.sql',import.meta.url),'utf8');
   const abuse=readFileSync(new URL('../migrations/0002_abuse_controls.sql',import.meta.url),'utf8');
   const commerce=readFileSync(new URL('../migrations/0003_commercial_foundations.sql',import.meta.url),'utf8');
-  assert.equal(/CREATE\s+TRIGGER/i.test(commerce),false,'Remote D1 migration must not rely on the buggy trigger splitter');
+  assert.equal(/CREATE\s+TRIGGER/i.test(commerce.replace(/--[^\n]*/g,'')),false,'Remote D1 migration must not rely on trigger statements');
   this.conn.exec(base);this.conn.exec(abuse);this.conn.exec(commerce);
   const tables=this.conn.prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name IN ('orders','order_items','merchant_compliance')").get() as {n:number};
   assert.equal(tables.n,3);
