@@ -1,5 +1,6 @@
 import {CommerceEnv,stripe,stripeSignatureValid} from './commercial-utils';
 import {json,error} from './security';
+import {cancelUnpaid} from './inventory';
 type StripeEvent={id:string;type:string;account?:string;data?:{object?:any}};
 async function applyCompleted(env:CommerceEnv,event:StripeEvent,session:any):Promise<void>{
  const orderId=session?.metadata?.order_id||session?.client_reference_id,storeId=session?.metadata?.store_id;
@@ -30,7 +31,7 @@ export async function processStripeEvent(env:CommerceEnv,event:StripeEvent):Prom
  if(event.type==='checkout.session.expired'){
   const order=await env.DB.prepare('SELECT id,stripe_session_id,stripe_connected_account FROM orders WHERE id=?').bind(obj.metadata?.order_id||'').first<any>();
   if(order&&order.stripe_session_id===obj.id&&event.account===order.stripe_connected_account)
-   await env.DB.prepare("UPDATE orders SET status='cancelled',updated_at=datetime('now') WHERE id=? AND status='pending_payment'").bind(order.id).run();
+   await cancelUnpaid(env,order.id);
  }
  if(event.type==='charge.refunded'){
   const pi=obj.payment_intent;
@@ -70,14 +71,14 @@ export async function reconcileSessions(env:CommerceEnv):Promise<void>{
  for(const order of old.results||[]){
   try{
    if(!order.stripe_session_id){
-    await env.DB.prepare("UPDATE orders SET status='cancelled' WHERE id=? AND status='pending_payment'").bind(order.id).run();
+    await cancelUnpaid(env,order.id);
     continue;
    }
    const session=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
    if(session.payment_status==='paid'){
     await applyCompleted(env,{id:'reconcile-'+order.id,type:'checkout.session.completed',account:order.stripe_connected_account},session);
    }else if(session.status==='expired'){
-    await env.DB.prepare("UPDATE orders SET status='cancelled' WHERE id=? AND status='pending_payment'").bind(order.id).run();
+    await cancelUnpaid(env,order.id);
    }
   }catch(e){console.error('Session reconciliation postponed',order.id,e)}
  }
