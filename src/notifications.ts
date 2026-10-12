@@ -1,5 +1,5 @@
-import type {CommerceEnv} from './commercial-utils';
-import {htmlSafe,safeEmail} from './commercial-utils';
+import type {CommerceEnv} from './commercial-utils.ts';
+import {htmlSafe,safeEmail} from './commercial-utils.ts';
 
 export type NotificationTemplate='buyer_paid'|'seller_paid'|'buyer_tracking'|'seller_consumer_request'|'supplier_purchase_order'|'buyer_refund';
 export interface PendingNotification {
