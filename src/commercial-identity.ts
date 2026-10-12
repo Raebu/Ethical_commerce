@@ -61,8 +61,20 @@ export async function identityRoutes(req:Request,env:CommerceEnv):Promise<Respon
   reg=textField(b.companyRegistration,100),returns=requireHttps(b.returnPolicyUrl),
   shipping=requireHttps(b.shippingPolicyUrl),terms=requireHttps(b.termsUrl),privacy=requireHttps(b.privacyUrl),
   notice=textField(b.cancellationNotice,1000);
-  if(legal.length<3||address.length<12||!contact||!returns||!shipping||!terms||!privacy||notice.length<30||b.acceptConsumerDuties!==true)
-   return error('Complete legal seller identity, contact, address, published policies, cancellation information and acceptance of consumer duties');
+  // Return field-level, safe validation messages rather than one generic error.
+  // The seller must supply their own genuine policy URLs; testing must not
+  // silently invent documents or relax the consumer protection requirements.
+  const fieldErrors:Record<string,string>={};
+  if(legal.length<3)fieldErrors.legalSellerName='Enter your legal seller name (at least 3 characters).';
+  if(address.length<12)fieldErrors.tradingAddress='Enter your full business correspondence address (at least 12 characters).';
+  if(!contact)fieldErrors.contactEmail='Enter a valid public customer-support email address.';
+  if(!returns)fieldErrors.returnPolicyUrl='Enter a complete HTTPS URL for your published returns policy.';
+  if(!shipping)fieldErrors.shippingPolicyUrl='Enter a complete HTTPS URL for your published shipping policy.';
+  if(!terms)fieldErrors.termsUrl='Enter a complete HTTPS URL for your published seller terms.';
+  if(!privacy)fieldErrors.privacyUrl='Enter a complete HTTPS URL for your published privacy policy.';
+  if(notice.length<30)fieldErrors.cancellationNotice='Explain statutory cancellation rights and any exceptions (at least 30 characters).';
+  if(b.acceptConsumerDuties!==true)fieldErrors.acceptConsumerDuties='Read and accept the applicable consumer protection, returns, privacy and product-safety duties.';
+  if(Object.keys(fieldErrors).length)return json({error:'Please correct the highlighted seller details.',fieldErrors},400);
   const existing=await env.DB.prepare('SELECT stripe_account_id FROM merchant_compliance WHERE store_id=?').bind(storeId).first<{stripe_account_id:string|null}>();
   await env.DB.prepare(`INSERT INTO merchant_compliance
    (store_id,legal_seller_name,trading_address,contact_email,company_registration,return_policy_url,shipping_policy_url,terms_url,privacy_url,cancellation_notice,consumer_terms_accepted_at,updated_at)
