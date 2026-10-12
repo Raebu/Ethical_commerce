@@ -43,7 +43,7 @@ class LocalD1 {
    this.prepare("INSERT INTO orders(id,store_id,client_key_hash,access_token_hash,subtotal_minor,stripe_connected_account,session_expires_at) VALUES(?,?,?,?,?,?,?)")
     .bind(id,'store','key-'+id,'secret-'+id,1000,'acct_test',9999999999),
    ...reserveStockStatements(this as unknown as Parameters<typeof reserveStockStatements>[0],id,
-    items.map(item=>({...item,store_id:'store'}))) as Statement[]
+    items.map(item=>({...item,store_id:'store'}))) as unknown as Statement[]
   ]);
  }
  stock(id:string){return (this.conn.prepare('SELECT stock FROM products WHERE id=?').get(id) as {stock:number}).stock}
