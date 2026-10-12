@@ -1,0 +1,32 @@
+# Example only — not deployed automatically.
+# Copy to wrangler.staging.toml, create a distinct Cloudflare D1 database, and
+# replace the placeholder with that database's UUID before deploying.
+# Never reuse the production DB UUID or copy production Stripe/Resend secrets.
+name = "ethical-commerce-staging"
+main = "src/worker.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ethicalcommerce-staging"
+database_id = "REPLACE_WITH_SEPARATE_STAGING_D1_DATABASE_UUID"
+migrations_dir = "migrations"
+
+[vars]
+APP_NAME = "Ethical Commerce Staging"
+RUNTIME_TIER = "staging"
+TEST_CHECKOUT_ENABLED = "false"
+STRIPE_TAX_ENABLED = "false"
+NOTIFICATIONS_ENABLED = "false"
+SALES_ENABLED = "false"
+PUBLISHING_ENABLED = "false"

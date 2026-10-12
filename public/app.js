@@ -42,7 +42,8 @@ async function passport(productId){
    target.insertAdjacentHTML('beforeend',legal);
    if(hinfo.payments==='configuration-enabled'&&urls.every(x=>image(x[1]))){
     const offlineNotice=target.querySelector('.notice');if(offlineNotice)offlineNotice.remove();
-    target.insertAdjacentHTML('beforeend','<div class="panel"><h3>Secure seller checkout</h3><p class="small muted">Available for verified approved stores only. Stripe Checkout calculates applicable tax and shows the final payable total.</p><label><input id="ack-policies" type="checkbox"> I have reviewed the seller’s returns, shipping, privacy and terms disclosures.</label><button class="btn btn-dark" data-buy="'+h(p.id)+'" data-store="'+h(p.store_id)+'">Continue to secure checkout ↗</button></div>');
+    const isSandbox=hinfo.paymentMode==='test';
+    target.insertAdjacentHTML('beforeend','<div class="panel"><h3>'+(isSandbox?'TEST MODE — no real card charges':'Secure seller checkout')+'</h3><p class="small muted">'+(isSandbox?'This checkout is for authorised sandbox testing only. Do not enter genuine payment or shipping information.':'Available for verified approved stores only. Stripe Checkout calculates applicable tax and shows the final payable total.')+'</p><label><input id="ack-policies" type="checkbox"> I have reviewed the seller’s returns, shipping, privacy and terms disclosures.</label><button class="btn btn-dark" data-buy="'+h(p.id)+'" data-store="'+h(p.store_id)+'">'+(isSandbox?'Continue to test checkout ↗':'Continue to secure checkout ↗')+'</button></div>');
    }
   }
  }catch(e){console.warn('Public seller disclosures unavailable',e)}
