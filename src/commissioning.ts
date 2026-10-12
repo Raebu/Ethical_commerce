@@ -1,5 +1,5 @@
 import type {CommerceEnv} from './commercial-utils.ts';
-import {needLogin,isResponse,safeEmail,stripeKeyMode,sandboxCheckoutConfigured,productionCheckoutConfigured} from './commercial-utils.ts';
+import {needLogin,isResponse,safeEmail,stripeKeyMode,sandboxCheckoutConfigured,productionCheckoutConfigured,stripe} from './commercial-utils.ts';
 import {json,error} from './security.ts';
 import {throttle} from './abuse.ts';
 
@@ -28,13 +28,48 @@ export function commissioningSnapshot(env:CommerceEnv){
  };
 }
 
+/**
+ * Operator-initiated, read-only call to Stripe. Never expose its secret key,
+ * account ID, company details, documents or detailed requirement data.
+ */
+export async function stripeAccountReadiness(env:CommerceEnv){
+ const mode=stripeKeyMode(env.STRIPE_SECRET_KEY);
+ const tier=env.RUNTIME_TIER;
+ if(mode==='missing'||mode==='unrecognized')return {configured:false,mode,providerChecked:false,reason:'No valid Stripe key installed on this Worker'};
+ if((tier==='staging'&&mode!=='test')||(tier==='production'&&mode!=='live')||!['staging','production'].includes(tier||''))
+  return {configured:true,mode,providerChecked:false,reason:'Stripe key is not permitted in this deployment tier'};
+ try{
+  const account=await stripe(env,'account');
+  const chargesEnabled=account?.charges_enabled===true;
+  const payoutsEnabled=account?.payouts_enabled===true;
+  const cardPayments=typeof account?.capabilities?.card_payments==='string'?account.capabilities.card_payments:'unknown';
+  const transfers=typeof account?.capabilities?.transfers==='string'?account.capabilities.transfers:'unknown';
+  const outstandingRequirements=Array.isArray(account?.requirements?.currently_due)?account.requirements.currently_due.length>0:null;
+  return {
+   configured:true,mode,providerChecked:true,
+   accountType:account?.type||'unknown',
+   country:account?.country||'unknown',
+   chargesEnabled,payoutsEnabled,cardPayments,transfers,outstandingRequirements,
+   readyForTestCardCheckout:chargesEnabled&&cardPayments==='active'&&tier==='staging',
+   note:'This is a read-only snapshot of the configured Stripe account, not proof of platform Connect approval, seller compliance or a successful payment.'
+  };
+ }catch{
+  return {configured:true,mode,providerChecked:false,reason:'Stripe account lookup failed. Verify the secret and provider permissions without disclosing the key.'};
+ }
+}
+
 /** No secrets, Stripe account ids, buyer addresses, tokens or personally-identifying data in diagnostics. */
 export async function commissioningRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
  const path=new URL(req.url).pathname;
- if(path!=='/api/commerce/admin/commissioning'&&path!=='/api/commerce/admin/test-email')return null;
+ if(!['/api/commerce/admin/commissioning','/api/commerce/admin/test-email','/api/commerce/admin/stripe-status'].includes(path))return null;
  const user=await needLogin(req,env);if(isResponse(user))return user;
  if(!user.is_platform_admin)return error('Platform administrator required',403);
  if(path.endsWith('/commissioning')&&req.method==='GET')return json(commissioningSnapshot(env));
+ if(path.endsWith('/stripe-status')&&req.method==='GET'){
+  const limit=await throttle(req,env,'commissioning-stripe-status',user.id,6,3600);
+  if(limit)return limit;
+  return json(await stripeAccountReadiness(env));
+ }
  if(path.endsWith('/test-email')&&req.method==='POST'){
   const limited=await throttle(req,env,'commissioning-test-email',user.id,2,3600);if(limited)return limited;
   if(!env.RESEND_API_KEY||!safeEmail(env.EMAIL_FROM))return error('Transactional sending not configured',503);
