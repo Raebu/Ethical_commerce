@@ -10,3 +10,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-12: Apply reviewed Stripe livemode webhook isolation and operator status probe (PR #18); keep all payment flags disabled.
 
 2026-10-12: Redeploy isolated staging to validate PBKDF2 iteration-limit seller-registration fix (PR #19). Payments, supplier emails, and publishing remain disabled.
+
+2026-10-12: Deploy UI/validation/email verification feedback fix PR #20 to isolated staging. Leave payment gates disabled; no production deployment.
