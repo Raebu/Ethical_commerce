@@ -86,6 +86,8 @@ try{
 
  assert.equal((await call('/api/commerce/assurance/verifiers',{token:cookie})).code,403);
  assert.equal((await call('/api/commerce/admin/payment-incidents',{token:cookie})).code,403,'Non-admin sellers must never inspect payment recovery records');
+ assert.equal((await call('/api/commerce/admin/commissioning',{token:cookie})).code,403,'Non-admin sellers cannot inspect provider readiness');
+ assert.equal((await call('/api/commerce/admin/test-email',{method:'POST',token:cookie,body:{confirm:'SEND_SELF_TEST'}})).code,403,'Non-admin sellers cannot send commissioning emails');
 
  const unknownEmail='unknown-'+crypto.randomUUID()+'@example.test';
  for(let i=0;i<8;i++)assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,401);
