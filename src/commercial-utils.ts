@@ -8,6 +8,7 @@ export interface CommerceEnv extends Env {
  SALES_ENABLED?:string;
  STRIPE_TAX_ENABLED?:string;
  PUBLISHING_ENABLED?:string;
+ ALLOWED_PUBLISHER_DOMAINS?:string;
  ENCRYPTION_MASTER_KEY?:string;
 }
 export function isTrue(x:unknown):boolean{return x==='true';}
