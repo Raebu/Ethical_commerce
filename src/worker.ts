@@ -32,7 +32,7 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
  const p=await env.DB.prepare('SELECT p.*,s.name AS store_name,s.slug AS store_slug,v.name AS supplier_name,v.country AS supplier_country FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN suppliers v ON v.id=p.supplier_id WHERE p.id=?').bind(productId).first<Record<string,unknown>>();
  if(!p||(publicOnly&&p.status!=='published'))return error('Product not found',404);
  const [claims,events]=await Promise.all([
-  env.DB.prepare('SELECT c.id,c.facet,c.statement,c.created_at,e.title AS evidence_title,e.issuer,e.source_url,CASE WHEN e.status='independently_verified' THEN
+  env.DB.prepare(`SELECT c.id,c.facet,c.statement,c.created_at,e.title AS evidence_title,e.issuer,e.source_url,CASE WHEN e.status='independently_verified' THEN
  CASE WHEN EXISTS(
  SELECT 1 FROM independent_assessments ia
  JOIN approved_verifiers av ON ia.verifier_id=av.id
@@ -40,8 +40,8 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
  AND ia.valid_until>=date('now')
  AND ia.id=(SELECT recent.id FROM independent_assessments recent WHERE recent.evidence_id=e.id ORDER BY recent.reviewed_at DESC,recent.rowid DESC LIMIT 1)
  ) THEN 'independently_verified' ELSE 'evidence_checked' END
- ELSE e.status END AS evidence_status,e.checked_at FROM passport_claims c LEFT JOIN evidence e ON e.id=c.evidence_id WHERE c.product_id=? ORDER BY c.created_at DESC').bind(productId).all(),
-  env.DB.prepare('SELECT t.id,t.stage,t.actor_name,t.place,t.happened_at,e.title AS evidence_title,e.source_url,CASE WHEN e.status='independently_verified' THEN
+ ELSE e.status END AS evidence_status,e.checked_at FROM passport_claims c LEFT JOIN evidence e ON e.id=c.evidence_id WHERE c.product_id=? ORDER BY c.created_at DESC`).bind(productId).all(),
+  env.DB.prepare(`SELECT t.id,t.stage,t.actor_name,t.place,t.happened_at,e.title AS evidence_title,e.source_url,CASE WHEN e.status='independently_verified' THEN
  CASE WHEN EXISTS(
  SELECT 1 FROM independent_assessments ia
  JOIN approved_verifiers av ON ia.verifier_id=av.id
@@ -49,7 +49,7 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
  AND ia.valid_until>=date('now')
  AND ia.id=(SELECT recent.id FROM independent_assessments recent WHERE recent.evidence_id=e.id ORDER BY recent.reviewed_at DESC,recent.rowid DESC LIMIT 1)
  ) THEN 'independently_verified' ELSE 'evidence_checked' END
- ELSE e.status END AS evidence_status FROM trace_events t LEFT JOIN evidence e ON e.id=t.evidence_id WHERE t.product_id=? ORDER BY t.happened_at ASC').bind(productId).all()
+ ELSE e.status END AS evidence_status FROM trace_events t LEFT JOIN evidence e ON e.id=t.evidence_id WHERE t.product_id=? ORDER BY t.happened_at ASC`).bind(productId).all()
  ]);
  const trace=events.results||[];
  return json({product:p,claims:claims.results||[],events:trace,coverage:traceCoverage(trace.map((e:any)=>String(e.stage)))});
