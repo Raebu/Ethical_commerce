@@ -21,7 +21,7 @@ Requirements: Node 20+, npm, a Cloudflare account for deployments.
 2. Run `npx wrangler d1 create ethical-commerce` and put its database ID in `wrangler.toml`.
 3. Run `npm run db:local` then `npm run dev`.
 4. Visit the local address printed by Wrangler. Register, create a store and add products.
-5. Run `npm run check` for type checks and tests.
+5. Run `npm run check` for type checks and tests. After local migration, use `npm run smoke` for the local lifecycle integration test.
 
 For production: apply `npm run db:remote` **after reviewing the migration**, configure a domain in Cloudflare and run `npm run deploy`.
 

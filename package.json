@@ -10,7 +10,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "check": "npm run typecheck && npm run test",
     "db:local": "wrangler d1 migrations apply ethical-commerce --local",
-    "db:remote": "wrangler d1 migrations apply ethical-commerce --remote"
+    "db:remote": "wrangler d1 migrations apply ethical-commerce --remote",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261011.1",
