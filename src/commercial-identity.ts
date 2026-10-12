@@ -5,29 +5,47 @@ const base='/api/commerce';
 
 async function requestVerification(req:Request,env:CommerceEnv):Promise<Response>{
  const user=await needLogin(req,env);if(isResponse(user))return user;
- if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is unavailable on Ethical Commerce staging. The operator must configure RESEND_API_KEY and EMAIL_FROM in Cloudflare Workers settings.',503);
- const exists=await env.DB.prepare('SELECT email_verified_at FROM users WHERE id=?').bind(user.id).first<{email_verified_at:string|null}>();
- if(exists?.email_verified_at)return json({verified:true});
+ const body=await readBody(req);
+ // Require an authenticated session; the entered email is a pending destination,
+ // not an identity claim. Keep the previous login email unchanged until clicked.
+ const target=safeEmail(body.email??user.email);
+ if(!target)return error('Enter a valid email address to verify',400);
+ const existing=await env.DB.prepare('SELECT email,email_verified_at FROM users WHERE id=?').bind(user.id).first<{email:string;email_verified_at:string|null}>();
+ if(!existing)return error('Sign in required',401);
+ if(existing.email.toLowerCase()===target&&existing.email_verified_at)return json({verified:true,email:existing.email});
+ if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is not available yet. Contact the operator to configure the verified transactional sender for Ethical Commerce staging.',503);
+ const duplicate=await env.DB.prepare('SELECT id FROM users WHERE email=? AND id<>?').bind(target,user.id).first();
+ if(duplicate)return error('This email cannot be used for this account',409);
  const limited=await throttle(req,env,'email-verify',user.id,3,3600);if(limited)return limited;
  const token=strongToken(),hash=await digest(token);
+ // A request supersedes older tokens for this user; do not invalidate account login.
  await env.DB.prepare('DELETE FROM email_challenges WHERE user_id=?').bind(user.id).run();
- await env.DB.prepare('INSERT INTO email_challenges(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(hash,user.id,Date.now()+20*60*1000).run();
+ await env.DB.prepare('INSERT INTO email_challenges(token_hash,user_id,expires_at,target_email) VALUES(?,?,?,?)').bind(hash,user.id,Date.now()+20*60*1000,target).run();
  const url=new URL('/verify?token='+token,req.url).href;
  try{
-  await sendEmail(env,user.email,'Verify your Ethical Commerce email',
+  await sendEmail(env,target,'Verify your Ethical Commerce email',
    '<p>Confirm that this email belongs to you. This link expires in 20 minutes.</p><p><a href="'+htmlSafe(url)+'">Verify email address</a></p><p>If you did not request this, ignore it.</p>');
- }catch{await env.DB.prepare('DELETE FROM email_challenges WHERE token_hash=?').bind(hash).run();return error('Verification email could not be sent',503)}
- return json({sent:true,expiresInSeconds:1200});
+ }catch{
+  await env.DB.prepare('DELETE FROM email_challenges WHERE token_hash=?').bind(hash).run();
+  return error('Verification email could not be sent. Please try again later.',503);
+ }
+ return json({sent:true,pending:true,pendingEmail:target,expiresInSeconds:1200});
 }
 async function confirmVerification(req:Request,env:CommerceEnv):Promise<Response>{
  const body=await readBody(req),token=textField(body.token,128);
  if(!/^[a-f0-9]{64}$/.test(token))return error('Invalid or expired verification link',400);
  const limited=await throttle(req,env,'email-confirm','confirm',15,900);if(limited)return limited;
  const hash=await digest(token);
- const found=await env.DB.prepare('SELECT user_id FROM email_challenges WHERE token_hash=? AND expires_at>?').bind(hash,Date.now()).first<{user_id:string}>();
+ const found=await env.DB.prepare('SELECT c.user_id,c.target_email,u.email FROM email_challenges c JOIN users u ON u.id=c.user_id WHERE c.token_hash=? AND c.expires_at>?').bind(hash,Date.now()).first<{user_id:string;target_email:string;email:string}>();
  if(!found)return error('Invalid or expired verification link',400);
+ // Older challenges (issued before this migration) verify their original address.
+ const target=safeEmail(found.target_email||found.email);
+ if(!target)return error('Invalid verification link',400);
+ const duplicate=await env.DB.prepare('SELECT id FROM users WHERE email=? AND id<>?').bind(target,found.user_id).first();
+ if(duplicate)return error('This email cannot be used for this account',409);
+ // Atomic update prevents a partially confirmed address if an update fails.
  await env.DB.batch([
-  env.DB.prepare("UPDATE users SET email_verified_at=datetime('now') WHERE id=?").bind(found.user_id),
+  env.DB.prepare("UPDATE users SET email=?,email_verified_at=datetime('now') WHERE id=?").bind(target,found.user_id),
   env.DB.prepare('DELETE FROM email_challenges WHERE user_id=?').bind(found.user_id)
  ]);
  return json({verified:true});
@@ -38,8 +56,13 @@ export async function identityRoutes(req:Request,env:CommerceEnv):Promise<Respon
  if(path==='/api/auth/email/confirm'&&method==='POST')return confirmVerification(req,env);
  if(path==='/api/auth/email/status'&&method==='GET'){
   const u=await needLogin(req,env);if(isResponse(u))return u;
-  const x=await env.DB.prepare('SELECT email_verified_at FROM users WHERE id=?').bind(u.id).first<{email_verified_at:string|null}>();
-  return json({verified:!!x?.email_verified_at,serviceConfigured:!!(env.RESEND_API_KEY&&env.EMAIL_FROM)});
+  const [x,pending]=await Promise.all([
+   env.DB.prepare('SELECT email,email_verified_at FROM users WHERE id=?').bind(u.id).first<{email:string;email_verified_at:string|null}>(),
+   env.DB.prepare('SELECT target_email,expires_at FROM email_challenges WHERE user_id=? AND expires_at>? ORDER BY created_at DESC LIMIT 1').bind(u.id,Date.now()).first<{target_email:string;expires_at:number}>()
+  ]);
+  return json({email:x?.email||u.email,verified:!!x?.email_verified_at,pending:!!pending,
+   pendingEmail:pending?.target_email||null,expiresAt:pending?.expires_at||null,
+   serviceConfigured:!!(env.RESEND_API_KEY&&env.EMAIL_FROM)});
  }
  const publicSeller=path.match(/^\/api\/commerce\/public\/sellers\/([a-z0-9-]+)$/);
  if(publicSeller&&method==='GET'){

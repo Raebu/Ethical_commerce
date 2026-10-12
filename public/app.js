@@ -34,6 +34,30 @@ function emailVerificationFeedback(message,kind='info'){
  if(target){target.hidden=false;target.dataset.result=kind;target.textContent=message;target.focus({preventScroll:false})}
  else flash(message);
 }
+function emailVerificationWidget(email,editing=false){
+ const configured=!!email.serviceConfigured;
+ const value=email.pendingEmail||email.email||state.user?.email||'';
+ if(email.pending&&!editing)return '<div class="notice" role="status"><strong>Email under verification — check your email</strong><p>We sent a verification link to <strong>'+h(value)+'</strong>. Open the link to verify your address. It expires after 20 minutes.</p><p class="small">If the message has not arrived, check your junk or spam folder.</p></div><div class="row"><button type="button" class="btn btn-soft" data-op="resend-verification" data-email="'+h(value)+'" '+(configured?'':'disabled')+'>Resend verification email</button><button type="button" class="btn btn-light" data-op="change-verification-email">Use a different email</button></div><p id="email-verification-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></p>';
+ if(email.verified&&!editing)return '<div class="notice" role="status"><strong>Email verified</strong><p>'+h(email.email||value)+' has been verified successfully.</p></div><button type="button" class="btn btn-light" data-op="change-verification-email">Change email address</button><p id="email-verification-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></p>';
+ return '<form class="form" data-action="verify-email"><label>Email address<input name="email" class="input" type="email" autocomplete="email" required maxlength="254" value="'+h(value)+'" placeholder="you@example.com"></label><button class="btn btn-dark" type="submit" '+(configured?'':'disabled')+'>Verify email</button></form>'+(!configured?'<div class="notice">Email verification is not available yet: the staging operator needs to configure the verified transactional sender. You can enter your email now, but the verification request cannot be sent until then.</div>':'<p class="small muted">We will email a private verification link to this address. Your current login email stays unchanged until you open the link.</p>')+'<p id="email-verification-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></p>';
+}
+async function refreshEmailVerification(editing=false){
+ const target=document.querySelector('#email-verification-control');
+ if(!target)return;
+ const status=await api('/api/auth/email/status');
+ target.innerHTML=emailVerificationWidget(status,editing);
+}
+async function sendVerificationRequest(email,button){
+ if(button)button.disabled=true;
+ emailVerificationFeedback('Sending a verification link…');
+ try{
+  const result=await post('/api/auth/email/request',{email});
+  if(result.sent){await refreshEmailVerification()}
+  else if(result.verified){await refreshEmailVerification()}
+  else emailVerificationFeedback('We could not start email verification. Please try again.','error');
+ }catch(ex){emailVerificationFeedback(ex.message||'Unable to request verification.','error')}
+ finally{if(button&&button.isConnected)button.disabled=false}
+}
 
 async function api(path,options={}){
  const res=await fetch(path,{credentials:'same-origin',headers:{'accept':'application/json',...(options.body?{'content-type':'application/json'}:{})},...options});
@@ -161,7 +185,7 @@ async function merchantCompliance(work){
   api('/api/commerce/stores/'+state.storeId+'/connect-status')
  ]);
  const c=details.compliance||{};
- const verify=email.verified?'<span class="badge">Email verified</span>':'<div class="notice">Email verification is required before Stripe seller onboarding. '+(email.serviceConfigured?'We will send the link to your signed-in account email, not the public customer-support address.':'Email sending has not been configured for this staging Worker yet. An operator must configure RESEND_API_KEY and EMAIL_FROM for ethical-commerce-staging in Cloudflare before verification can be sent.')+'</div><button type="button" class="btn btn-soft" data-op="send-verification" '+(email.serviceConfigured?'':'disabled aria-disabled="true"')+'>'+(email.serviceConfigured?'Email me a verification link':'Email verification unavailable')+'</button><p id="email-verification-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></p>';
+ const verify='<div id="email-verification-control">'+emailVerificationWidget(email)+'</div>';
  const compliance='<form class="form" data-action="seller-compliance"><div class="form-grid">'+
   input('legalSellerName','Legal seller name',c.legal_seller_name||'','text','required minlength="3"')+
   input('contactEmail','Public customer support email',c.contact_email||'','email','required')+
@@ -316,15 +340,8 @@ document.addEventListener('click',async e=>{
  if(op){
   if(op.dataset.op==='toggle-auth'){state.authMode=state.authMode==='register'?'login':'register';auth()}
   if(op.dataset.op==='cancel-edit'){state.editProduct=null;await dashboard()}
-  if(op.dataset.op==='send-verification'){
-   op.disabled=true;
-   emailVerificationFeedback('Requesting your email verification link…');
-   try{
-    const result=await post('/api/auth/email/request',{});
-    emailVerificationFeedback(result.sent?'Verification email accepted by our provider. Check the inbox and spam folder of your signed-in account. The link expires in 20 minutes.':'Your email is already verified.','success');
-   }catch(ex){emailVerificationFeedback(ex.message||'Unable to request the verification email.','error')}
-   finally{op.disabled=false}
-  }
+  if(op.dataset.op==='resend-verification')await sendVerificationRequest(op.dataset.email,op);
+  if(op.dataset.op==='change-verification-email')await refreshEmailVerification(true);
   if(op.dataset.op==='stripe-onboard'){try{const d=await post('/api/commerce/stores/'+state.storeId+'/onboarding',{});if(d.onboardingUrl)location.href=d.onboardingUrl}catch(ex){flash(ex.message)}}
   if(op.dataset.op==='pause-sales'){try{await post('/api/commerce/stores/'+state.storeId+'/pause',{paused:true});flash('Store sales paused')}catch(ex){flash(ex.message)}}
   if(op.dataset.op==='logout'){try{await post('/api/auth/logout',{});state.user=null;state.stores=[];navigate('/dashboard')}catch(ex){flash(ex.message)}}
@@ -383,6 +400,10 @@ document.addEventListener('submit',async e=>{
    if(data.confirm!=='yes')throw Error('Please explicitly authorise this test email');
    const result=await post('/api/commerce/admin/test-email',{confirm:'SEND_SELF_TEST'});
    flash(result.accepted?'Test accepted by provider; check the actual receiving inbox.':'Test not accepted');
+   return;
+  }
+  if(act==='verify-email'){
+   await sendVerificationRequest(String(data.email||'').trim(),btn);
    return;
   }
   if(act==='seller-compliance'){
