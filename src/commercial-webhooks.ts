@@ -4,7 +4,7 @@ import {json,error} from './security.ts';
 import {cancelUnpaid} from './inventory.ts';
 import {queuePaidNotifications,queueRefundNotification} from './notifications.ts';
 import {paymentIncident} from './payment-recovery.ts';
-type StripeEvent={id:string;type:string;account?:string;data?:{object?:any}};
+type StripeEvent={id:string;type:string;livemode:boolean;account?:string;data?:{object?:any}};
 async function applyCompleted(env:CommerceEnv,event:StripeEvent,session:any):Promise<void>{
  const orderId=session?.metadata?.order_id||session?.client_reference_id,storeId=session?.metadata?.store_id;
  if(!/^[a-f0-9-]{36}$/.test(orderId||''))return;
@@ -87,6 +87,11 @@ export async function stripeWebhook(req:Request,env:CommerceEnv):Promise<Respons
  if(!valid)return error('Invalid Stripe webhook signature',400);
  let evt:StripeEvent;try{evt=JSON.parse(body)}catch{return error('Invalid JSON',400)}
  if(!evt?.id||!evt?.type||!/^evt_[a-zA-Z0-9]+$/.test(evt.id))return error('Invalid Stripe event',400);
+ // Even a correctly signed webhook must belong to the environment handling it.
+ // Prevent a staging signer/endpoint from ever changing live order state and vice versa.
+ const requiredMode=env.RUNTIME_TIER==='staging'?false:env.RUNTIME_TIER==='production'?true:null;
+ if(requiredMode===null||typeof evt.livemode!=='boolean'||evt.livemode!==requiredMode)
+  return error('Stripe webhook environment mode mismatch',400);
  if(!['account.updated','checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.expired','charge.refunded'].includes(evt.type))
   return json({received:true,ignored:true});
  if(await env.DB.prepare('SELECT event_id FROM stripe_events WHERE event_id=?').bind(evt.id).first())return json({received:true,duplicate:true});
@@ -114,7 +119,7 @@ export async function reconcileSessions(env:CommerceEnv):Promise<void>{
    }
    const session=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
    if(session.payment_status==='paid'){
-    await applyCompleted(env,{id:'reconcile-'+order.id,type:'checkout.session.completed',account:order.stripe_connected_account},session);
+    await applyCompleted(env,{id:'reconcile-'+order.id,type:'checkout.session.completed',livemode:env.RUNTIME_TIER==='production',account:order.stripe_connected_account},session);
    }else if(session.status==='expired'){
     await cancelUnpaid(env,order.id);
    }

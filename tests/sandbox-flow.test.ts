@@ -56,7 +56,7 @@ const commercialReq=(idempotencyKey=crypto.randomUUID(),quantity=1)=>
  headers:{'content-type':'application/json','cf-connecting-ip':'192.0.2.19'},
  body:JSON.stringify({storeId:STORE,idempotencyKey,items:[{productId:PRODUCT,quantity}],acceptPolicies:true})});
 async function webhookReq(orderId:string){
- const event={id:'evt_'+orderId.replaceAll('-',''),type:'checkout.session.completed',
+ const event={id:'evt_'+orderId.replaceAll('-',''),type:'checkout.session.completed',livemode:false,
   account:'acct_test_mock',data:{object:{
    id:sessionId,metadata:{order_id:orderId,store_id:STORE},
    payment_status:'paid',currency:'gbp',amount_subtotal:1500,payment_intent:'pi_mock_1',
