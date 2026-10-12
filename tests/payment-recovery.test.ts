@@ -59,7 +59,7 @@ async function signedWebhook(event:any,secret='whsec_test_secret',override?:stri
 function eventFor(id:string,opts:{session?:string;account?:string;subtotal?:number;eventId?:string}={}){
  return {
   id:opts.eventId||'evt_accepted1',
-  type:'checkout.session.completed',account:opts.account||'acct_test',
+  type:'checkout.session.completed',livemode:false,account:opts.account||'acct_test',
   data:{object:{
    id:opts.session||'cs_test_abc123',metadata:{order_id:id,store_id:'store'},
    payment_status:'paid',currency:'gbp',amount_subtotal:opts.subtotal??1500,
@@ -68,7 +68,7 @@ function eventFor(id:string,opts:{session?:string;account?:string;subtotal?:numb
  };
 }
 test('signed Connect payment confirms one reserved order, fulfilment and outbox once',async()=>{
- const db=new TestD1(),env={DB:db,STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret',NOTIFICATIONS_ENABLED:'false'} as any;
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret',NOTIFICATIONS_ENABLED:'false'} as any;
  try{
   const id=db.seed(),event=eventFor(id);
   let res=await stripeWebhook(await signedWebhook(event),env);
@@ -83,7 +83,7 @@ test('signed Connect payment confirms one reserved order, fulfilment and outbox 
  }finally{db.close()}
 });
 test('invalid webhook signature cannot change an order',async()=>{
- const db=new TestD1(),env={DB:db,STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
  try{
   const id=db.seed();
   const res=await stripeWebhook(await signedWebhook(eventFor(id),'whsec_test_secret','0'.repeat(64)),env);
@@ -93,7 +93,7 @@ test('invalid webhook signature cannot change an order',async()=>{
  }finally{db.close()}
 });
 test('a wrong checkout session is rejected and recorded for operator review',async()=>{
- const db=new TestD1(),env={DB:db,STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
  try{
   const id=db.seed(),evt=eventFor(id,{session:'cs_test_wrong',eventId:'evt_wrong'});
   const res=await stripeWebhook(await signedWebhook(evt),env);
@@ -104,7 +104,7 @@ test('a wrong checkout session is rejected and recorded for operator review',asy
  }finally{db.close()}
 });
 test('a paid event after stock was released is never silently fulfilled',async()=>{
- const db=new TestD1(),env={DB:db,STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
  try{
   const id=db.seed({state:'cancelled',released:1});
   const res=await stripeWebhook(await signedWebhook(eventFor(id,{eventId:'evt_late'})),env);
@@ -115,7 +115,7 @@ test('a paid event after stock was released is never silently fulfilled',async()
  }finally{db.close()}
 });
 test('signed delayed success can reconcile a known checkout-persistence incident',async()=>{
- const db=new TestD1(),env={DB:db,STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
  try{
   const id=db.seed({session:null as unknown as string});
   db.conn.prepare("INSERT INTO payment_incidents(id,order_id,store_id,reason) VALUES(?,?,?,'checkout_persistence_failed')")
