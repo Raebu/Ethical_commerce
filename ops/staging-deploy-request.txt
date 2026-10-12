@@ -12,3 +12,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-12: Redeploy isolated staging to validate PBKDF2 iteration-limit seller-registration fix (PR #19). Payments, supplier emails, and publishing remain disabled.
 
 2026-10-12: Deploy UI/validation/email verification feedback fix PR #20 to isolated staging. Leave payment gates disabled; no production deployment.
+
+2026-10-12: Deploy verified seller email entry/pending workflow PR #21 and migration 0006 to isolated staging only. Keep checkout disabled, retain all staging secrets.
