@@ -35,6 +35,17 @@ npx wrangler deploy
 
 Migration `0001_initial.sql` establishes the actual tables required by the API.
 
+## Fast dashboard-only schema setup (useful on mobile)
+
+Because the existing `ethicalcommerce` database currently has zero tables, the Cloudflare **D1 → ethicalcommerce → Console** page can execute the initial SQL schema:
+
+1. Open [migrations/0001_initial.sql](../migrations/0001_initial.sql) in GitHub and copy the entire SQL content.
+2. In the Cloudflare database's **Console** tab, paste the SQL into the editor and choose **Execute / Run**.
+3. Return to Overview and confirm the table count is greater than zero.
+4. When the Worker has deployed from the corrected `main` branch, open `/api/ready` to verify that its D1 binding can access the schema.
+
+**Important:** Direct SQL execution from the dashboard **does not write to Wrangler's `d1_migrations` tracking table**. This is acceptable for initial schema setup while the database is empty, because the SQL uses `IF NOT EXISTS`; use a properly tracked Wrangler migration flow for subsequent schema changes. The preferred long-term command is `npm run db:remote` from an authenticated environment with D1 edit rights. Never paste secrets or production customer data into the SQL console.
+
 ## Cloudflare Workers Builds and migrations
 
 The Cloudflare Workers build token can deploy a Worker with a D1 binding but may **not** have permission to execute D1 migrations. This is separate from its ability to bind the database. If `d1 migrations apply --remote` returns a permission error, run it once locally with a Cloudflare-authenticated account that has D1 edit permissions. Do not place a personal/global API key in the repo.
