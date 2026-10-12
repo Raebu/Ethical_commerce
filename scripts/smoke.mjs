@@ -24,6 +24,16 @@ try{
  assert.equal(s.code,201,JSON.stringify(s.data));const storeId=s.data.id;
  const unverified=await call('/api/auth/email/status',{token:cookie});assert.equal(unverified.code,200);assert.equal(unverified.data.verified,false);
  assert.equal((await call('/api/auth/email/request',{method:'POST',token:cookie,body:{}})).code,503);
+ const badCompliance=await call('/api/commerce/stores/'+storeId+'/compliance',{method:'POST',token:cookie,body:{
+  legalSellerName:'X',tradingAddress:'Short',contactEmail:'not-an-email',
+  returnPolicyUrl:'http://example.com/returns',shippingPolicyUrl:'',termsUrl:'invalid',
+  privacyUrl:'https://example.com/#not-allowed',cancellationNotice:'Too brief',
+  acceptConsumerDuties:false
+ }});
+ assert.equal(badCompliance.code,400);
+ assert.equal(badCompliance.data.error,'Please correct the highlighted seller details.');
+ for(const field of ['legalSellerName','tradingAddress','contactEmail','returnPolicyUrl','shippingPolicyUrl','termsUrl','privacyUrl','cancellationNotice','acceptConsumerDuties'])
+  assert.equal(typeof badCompliance.data.fieldErrors[field],'string','missing validation explanation for '+field);
  const cp=await call('/api/commerce/stores/'+storeId+'/compliance',{method:'POST',token:cookie,body:{
   legalSellerName:'Ethical Demo Limited',tradingAddress:'1 Example Street, UK',
   contactEmail:'support@example.com',companyRegistration:'00000000',
