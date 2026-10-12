@@ -135,3 +135,25 @@ test('reconciler never cancels a checkout lacking a known Stripe session',async(
   assert.equal(db.incident(id)?.reason,'missing_session_after_timeout');
  }finally{db.close()}
 });
+
+test('staging rejects correctly signed live-mode Stripe events without persisting them',async()=>{
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'staging',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ try{
+  const id=db.seed();
+  const event={...eventFor(id,{eventId:'evt_wrongmode'}),livemode:true};
+  const res=await stripeWebhook(await signedWebhook(event),env);
+  assert.equal(res.status,400);
+  assert.equal(db.order(id).status,'pending_payment');
+  assert.equal(db.count('stripe_events'),0);
+ }finally{db.close()}
+});
+test('production rejects correctly signed sandbox events without persisting them',async()=>{
+ const db=new TestD1(),env={DB:db,RUNTIME_TIER:'production',STRIPE_CONNECT_WEBHOOK_SECRET:'whsec_test_secret'} as any;
+ try{
+  const id=db.seed();
+  const res=await stripeWebhook(await signedWebhook(eventFor(id,{eventId:'evt_testmode'})),env);
+  assert.equal(res.status,400);
+  assert.equal(db.order(id).status,'pending_payment');
+  assert.equal(db.count('stripe_events'),0);
+ }finally{db.close()}
+});
