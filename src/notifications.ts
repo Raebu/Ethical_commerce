@@ -104,6 +104,9 @@ export async function processNotifications(env:CommerceEnv,limit=12):Promise<{pr
    const result=await response.json() as {id?:string};
    await env.DB.prepare("UPDATE notification_outbox SET status='sent',provider_message_id=?,sent_at=datetime('now'),lease_until=0 WHERE id=?")
     .bind(result.id||'',n.id).run();
+   if(n.template==='supplier_purchase_order'&&n.purchase_order_id){
+    await env.DB.prepare("UPDATE purchase_orders SET status='requested',updated_at=datetime('now') WHERE id=? AND status='queued'").bind(n.purchase_order_id).run();
+   }
    sent++;
   }catch(err){
    const retry=Date.now()+Math.min(3600000,15000*2**Math.min(n.attempts,8));
