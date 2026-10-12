@@ -41,3 +41,12 @@ test('approved staging workflow is bound to a separate actual D1 database',()=>{
  assert.ok(config.includes('database_id = "'+supplied+'"'));
  assert.ok(!config.includes('database_id = "'+liveId+'"'));
 });
+
+test('staging Worker deployment retries are bounded and fail closed',()=>{
+ const workflow=readFileSync(new URL('../.github/workflows/staging.yml',import.meta.url),'utf8');
+ assert.ok(workflow.includes('for attempt in 1 2 3; do'));
+ assert.ok(workflow.includes('npx wrangler deploy --config wrangler.staging.toml'));
+ assert.ok(workflow.includes("sleep"));
+ assert.ok(workflow.includes('exit 1'));
+ assert.ok(workflow.includes('CLOUDFLARE_API_TOKEN'));
+});
