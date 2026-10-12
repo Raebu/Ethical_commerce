@@ -69,7 +69,7 @@ async function dashboard(){
  if(!state.stores.some(s=>s.id===state.storeId))state.storeId=state.stores[0].id;
  localStorage.setItem('ec-store',state.storeId);
  const store=state.stores.find(s=>s.id===state.storeId);
- main.innerHTML='<div class="container"><div class="dashboard-header"><div><span class="eyebrow">Seller Studio</span><h1>'+h(store.name)+'</h1><p class="muted compact">Build your commerce business around evidence and accountability.</p></div><div class="actions">'+storeSelect()+'<a href="/shop/'+h(store.slug)+'" data-link class="btn btn-light btn-small">View storefront ↗</a><button class="btn btn-light btn-small" data-op="logout">Sign out</button></div></div><div class="dashboard"><aside class="sidebar" aria-label="Seller Studio sections">'+tabs.map(([key,label])=>'<button data-tab="'+key+'" class="'+(key===state.tab?'active':'')+'">'+label+'</button>').join('')+'</aside><div class="workspace" id="workspace">'+noData('Loading workspace','Connecting securely…')+'</div></div></div>';
+ main.innerHTML='<div class="container"><div class="dashboard-header"><div><span class="eyebrow">Seller Studio</span><h1>'+h(store.name)+'</h1><p class="muted compact">Build your commerce business around evidence and accountability.</p></div><div class="actions">'+storeSelect()+(state.user?.is_platform_admin?'<a href="/operator" data-link class="btn btn-soft btn-small">Platform commissioning</a>':'')+'<a href="/shop/'+h(store.slug)+'" data-link class="btn btn-light btn-small">View storefront ↗</a><button class="btn btn-light btn-small" data-op="logout">Sign out</button></div></div><div class="dashboard"><aside class="sidebar" aria-label="Seller Studio sections">'+tabs.map(([key,label])=>'<button data-tab="'+key+'" class="'+(key===state.tab?'active':'')+'">'+label+'</button>').join('')+'</aside><div class="workspace" id="workspace">'+noData('Loading workspace','Connecting securely…')+'</div></div></div>';
  const work=document.querySelector('#workspace');
  try{
   if(state.tab==='overview'){
@@ -224,6 +224,17 @@ async function orderResult(){
  panel('Request help or a return','<form data-action="consumer-help" class="form"><label>Request type<select name="kind">'+['cancellation','return','refund','fault','complaint'].map(x=>'<option value="'+x+'">'+x+'</option>').join('')+'</select></label>'+input('contactEmail','Your email address','','email','required')+field('details','Describe your request')+'<button class="btn btn-dark">Submit request</button></form>')+'</div>';
  }catch(e){main.innerHTML='<div class="container page-head"><h1>Order lookup failed</h1><p>'+h(e.message)+'</p></div>'}
 }
+async function operatorDashboard(){
+ const user=state.user;
+ if(!user?.is_platform_admin){main.innerHTML='<div class="container page-head"><h1>Restricted area</h1><p>Platform administrator access is required.</p><a href="/dashboard" data-link>Return to Seller Studio</a></div>';return}
+ const d=await api('/api/commerce/admin/commissioning');
+ const cells=d.checks.map(x=>'<tr><td>'+h(x.name.replaceAll('_',' '))+'</td><td><span class="badge '+(x.passed?'':'warn')+'">'+(x.passed?'Configured':'Not configured')+'</span></td></tr>').join('');
+ main.innerHTML='<div class="container"><div class="dashboard-header"><div><span class="eyebrow">Platform operations</span><h1>Commercial commissioning</h1><p class="muted">Private configuration checks. These do not constitute provider approval or evidence of live delivery.</p></div><div class="actions"><a class="btn btn-light btn-small" href="/dashboard" data-link>Seller Studio →</a></div></div>'+
+ panel('Payment safety','<p><strong>Deployment:</strong> '+h(d.tier)+' · <strong>Stripe key mode:</strong> '+h(d.stripeMode)+'</p><p><strong>Sandbox checkout:</strong> '+(d.sandboxCheckoutEnabled?'Configured':'Disabled')+' · <strong>Live checkout:</strong> '+(d.liveCheckoutEnabled?'Configured':'Disabled')+'</p><div class="notice">Payment flags alone do not certify legal, tax, supplier or security readiness. Do not switch on live payments to test integration.</div>')+
+ panel('Integration checks','<div class="table-wrap"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>'+cells+'</tbody></table></div>')+
+ panel('Transactional email test','<p>Only available to a platform administrator with a previously verified email address. Sends to the signed-in account only, never to real customers or suppliers.</p><form class="form" data-action="operator-test-email"><label><input type="checkbox" name="confirm" value="yes" required> I authorise one test email to my verified account.</label><button class="btn btn-soft">Send one self-test email</button></form>')+
+ panel('Provider setup','<p>Separate staging database, test-mode Stripe Connect credentials and transactional sender credentials must be configured outside GitHub before an end-to-end test can be run.</p><p><a href="https://github.com/Raebu/Ethical_commerce/blob/main/docs/SANDBOX_COMMISSIONING.md" target="_blank" rel="noopener noreferrer">Open staging commissioning guide ↗</a></p>');
+}
 async function render(){
  try{
   const pathname=location.pathname;
@@ -231,6 +242,10 @@ async function render(){
   if(pathname==='/about'||pathname==='/sell'){landing(pathname.slice(1));return}
   if(pathname==='/verify'){await verificationPage();return}
   if(pathname==='/order-result'){await orderResult();return}
+  if(pathname==='/operator'){
+   try{const d=await api('/api/me');state.user=d.user;state.stores=d.stores}catch{state.user=null;state.stores=[]}
+   await operatorDashboard();return;
+  }
   if(pathname==='/dashboard'){
    try{const d=await api('/api/me');state.user=d.user;state.stores=d.stores}catch{state.user=null;state.stores=[]}
    await dashboard();return;
@@ -309,6 +324,12 @@ document.addEventListener('submit',async e=>{
   if(act==='supplier-order-status'){
    await post('/api/commerce/purchase-orders/'+data.id+'/status',{status:data.status,supplierReference:data.supplierReference});
    flash('Supplier status recorded as a merchant declaration');await dashboard();return
+  }
+  if(act==='operator-test-email'){
+   if(data.confirm!=='yes')throw Error('Please explicitly authorise this test email');
+   const result=await post('/api/commerce/admin/test-email',{confirm:'SEND_SELF_TEST'});
+   flash(result.accepted?'Test accepted by provider; check the actual receiving inbox.':'Test not accepted');
+   return;
   }
   if(act==='seller-compliance'){
    await post('/api/commerce/stores/'+state.storeId+'/compliance',{
