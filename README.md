@@ -18,12 +18,12 @@
 Requirements: Node 20+, npm, a Cloudflare account for deployments.
 
 1. Run `npm install`.
-2. Run `npx wrangler d1 create ethical-commerce` and put its database ID in `wrangler.toml`.
+2. Use the configured `ethicalcommerce` D1 binding (or create a separate local/test database if required); the production database UUID is already configured in `wrangler.toml`.
 3. Run `npm run db:local` then `npm run dev`.
 4. Visit the local address printed by Wrangler. Register, create a store and add products.
 5. Run `npm run check` for type checks and tests. After local migration, use `npm run smoke` for the local lifecycle integration test.
 
-For production: apply `npm run db:remote` **after reviewing the migration**, configure a domain in Cloudflare and run `npm run deploy`.
+For production: apply `npm run db:remote` **after reviewing the migration** to initialise the remote D1 database, then run `npm run deploy`. The GitHub-connected Cloudflare build's default `npx wrangler deploy` command does not automatically apply migrations. See `docs/CLOUDFLARE_D1_SETUP.md` before enabling public registrations.
 
 ## Important launch limitations
 
