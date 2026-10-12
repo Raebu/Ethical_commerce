@@ -6,7 +6,7 @@ export type Stage = typeof STAGES[number];
 export type EvidenceStatus = 'missing'|'supplier_declared'|'evidence_checked'|'independently_verified'|'rejected';
 
 export function safeSlug(input: string): string {
- return input.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70);
+ return input.replace(/[™®©]/g,'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70);
 }
 export function cleanText(value: unknown, max=240): string {
  return typeof value==='string' ? value.trim().slice(0,max) : '';
