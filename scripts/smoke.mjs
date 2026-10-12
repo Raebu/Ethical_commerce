@@ -16,6 +16,7 @@ try{
  for(let n=0;n<120;n++){if(server.exitCode!==null)throw Error('Worker failed: '+output);try{ok=(await call('/api/health')).code===200;if(ok)break}catch{}await pause(250)}
  if(!ok)throw Error('Worker startup timed out: '+output);
  assert.equal((await call('/')).code,200);
+ const ready=await call('/api/ready');assert.equal(ready.code,200);assert.equal(ready.data.ready,true);
  const owner=await call('/api/auth/register',{method:'POST',body:{email:'owner-'+crypto.randomUUID()+'@example.test',password:'verystrongpassphrase2026'}});
  assert.equal(owner.code,201,JSON.stringify(owner.data));
  const cookie=owner.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie);
