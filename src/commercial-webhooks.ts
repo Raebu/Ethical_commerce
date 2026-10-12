@@ -1,4 +1,5 @@
-import {CommerceEnv,stripe,stripeSignatureValid} from './commercial-utils.ts';
+import type {CommerceEnv} from './commercial-utils.ts';
+import {stripe,stripeSignatureValid} from './commercial-utils.ts';
 import {json,error} from './security.ts';
 import {cancelUnpaid} from './inventory.ts';
 import {queuePaidNotifications,queueRefundNotification} from './notifications.ts';
