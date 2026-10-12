@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS orders (
  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
  client_key_hash TEXT NOT NULL UNIQUE,
  access_token_hash TEXT NOT NULL,
+ reservation_released INTEGER NOT NULL DEFAULT 0 CHECK(reservation_released IN (0,1)),
  status TEXT NOT NULL DEFAULT 'pending_payment' CHECK(status IN ('pending_payment','paid','cancelled','fulfilled','refunded','partially_refunded')),
  currency TEXT NOT NULL DEFAULT 'GBP' CHECK(currency='GBP'),
  subtotal_minor INTEGER NOT NULL CHECK(subtotal_minor>=0),
@@ -59,26 +60,11 @@ CREATE TABLE IF NOT EXISTS order_items (
  UNIQUE(order_id,product_id)
 );
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
-CREATE TRIGGER IF NOT EXISTS trg_reserve_stock_before_insert BEFORE INSERT ON order_items
-BEGIN
- SELECT CASE WHEN NOT EXISTS (
-   SELECT 1 FROM products p JOIN orders o ON o.store_id=p.store_id
-    WHERE o.id=NEW.order_id AND p.id=NEW.product_id AND p.status='published'
-      AND p.currency='GBP' AND p.price_minor=NEW.unit_price_minor AND p.stock>=NEW.quantity
- ) THEN RAISE(ABORT,'insufficient_stock_or_changed_price') END;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_reserve_stock_after_insert AFTER INSERT ON order_items
-BEGIN
- UPDATE products SET stock=stock-NEW.quantity,updated_at=datetime('now') WHERE id=NEW.product_id;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_release_cancelled_order AFTER UPDATE OF status ON orders
-WHEN OLD.status='pending_payment' AND NEW.status='cancelled'
-BEGIN
- UPDATE products SET stock=stock+(
-  SELECT quantity FROM order_items WHERE order_id=NEW.id AND product_id=products.id
- ) WHERE id IN (SELECT product_id FROM order_items WHERE order_id=NEW.id);
-END;
-
+-- Inventory updates are performed by atomic D1 batch transactions in src/inventory.ts.
+-- Avoid CREATE TRIGGER here: remote D1 migration statement splitting can reject
+-- trigger bodies containing semicolons with SQLITE_ERROR 7500 (incomplete input).
+-- Orders record whether cancellation already released their stock, preventing
+-- duplicate restoration from webhook retries or scheduled reconciliation.
 CREATE TABLE IF NOT EXISTS stripe_events (
  event_id TEXT PRIMARY KEY,
  event_type TEXT NOT NULL,
