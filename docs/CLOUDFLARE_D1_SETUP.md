@@ -49,7 +49,7 @@ Only enable this if the token has the necessary permissions and backups / migrat
 
 ## Verification after a successful deployment
 
-1. `GET https://YOUR-WORKER.workers.dev/api/health` should return `{"ok":true,...}` (connectivity only).
+1. `GET https://YOUR-WORKER.workers.dev/api/health` should return `{"ok":true,...}` (Worker connectivity only). `GET /api/ready` must return `{"ready":true,"database":"configured","schema":"available"}`; 503 means the schema still needs migrations.
 2. `GET /api/public/products` must return 200 with `{"products":[]}` on an empty but migrated database.
 3. Register a **test-only** merchant account on a staging/non-public deployment. Test creation of a store, supplier, product, trace event and evidence claim.
 4. Check Worker logs for failures, verify data appears in D1, and confirm stores cannot access each other's records.
