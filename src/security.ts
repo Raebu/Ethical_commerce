@@ -32,7 +32,7 @@ const PASSWORD_HASH_TAG='pbkdf2-chain-v1';
 async function derivePasswordChain(value:string,salt:Uint8Array):Promise<string>{
  let material:Uint8Array=new TextEncoder().encode(value);
  for(let round=1;round<=PASSWORD_PBKDF2_ROUNDS;round++){
-  const key=await crypto.subtle.importKey('raw',material,'PBKDF2',false,['deriveBits']);
+  const key=await crypto.subtle.importKey('raw',new Uint8Array(material),'PBKDF2',false,['deriveBits']);
   const roundSalt=new Uint8Array(salt.byteLength+1);
   roundSalt.set(salt);
   roundSalt[salt.byteLength]=round;
