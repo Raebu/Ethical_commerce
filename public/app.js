@@ -38,7 +38,7 @@ async function passport(productId){
   const info=sellerInfo.seller||{},target=main.querySelector('.detail-copy');
   if(target){
    const urls=[['Returns',info.return_policy_url],['Shipping',info.shipping_policy_url],['Terms',info.terms_url],['Privacy',info.privacy_url]];
-   const legal=info.legal_seller_name?'<div class="evidence-entry"><strong>Legal seller: '+h(info.legal_seller_name)+'</strong><p>'+h(info.trading_address||'Address not provided')+'</p><p>Customer support: '+h(info.contact_email||'Not disclosed')+'</p><div class="row">'+urls.filter(x=>image(x[1])).map(x=>'<a href="'+h(x[1])+'" target="_blank" rel="noopener noreferrer" class="small">'+h(x[0])+' ↗</a>').join('')+'</div></div>':'<div class="notice">This seller has not completed its legal trading disclosures.</div>';
+   const legal=info.legal_seller_name?'<div class="evidence-entry"><strong>Seller-declared legal name: '+h(info.legal_seller_name)+'</strong><p>'+h(info.trading_address||'Address not provided')+'</p><p>Customer support: '+h(info.contact_email||'Not disclosed')+'</p><div class="row">'+urls.filter(x=>image(x[1])).map(x=>'<a href="'+h(x[1])+'" target="_blank" rel="noopener noreferrer" class="small">'+h(x[0])+' ↗</a>').join('')+'</div></div>':'<div class="notice">This seller has not completed its legal trading disclosures.</div>';
    target.insertAdjacentHTML('beforeend',legal);
    if(hinfo.payments==='configuration-enabled'&&urls.every(x=>image(x[1]))){
     const offlineNotice=target.querySelector('.notice');if(offlineNotice)offlineNotice.remove();
