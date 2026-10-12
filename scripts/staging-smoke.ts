@@ -5,7 +5,7 @@ const knownProduction='https://ethical-commerce.martin-e01.workers.dev';
 
 export function safeStagingOrigin(value=DEFAULT_ORIGIN){
  const url=new URL(value);
- if(url.origin!==DEFAULT_ORIGIN||url.origin===knownProduction||url.pathname!=='/'||url.search||url.hash)
+ if(url.origin!==DEFAULT_ORIGIN||url.pathname!=='/'||url.search||url.hash)
   throw Error('Refusing to probe an unapproved or production Worker');
  return url.origin;
 }
