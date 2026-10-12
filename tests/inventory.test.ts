@@ -7,6 +7,7 @@ import {reserveStockStatements,cancelUnpaid} from '../src/inventory.ts';
 type Params=(string|number|null)[];
 type Statement={sql:string;params:Params;bind:(...args:Params)=>Statement};
 class LocalD1 {
+ get DB(){return this}
  conn=new DatabaseSync(':memory:');
  prepare(sql:string):Statement {
   const statement:Statement={sql,params:[],bind(...params:Params){this.params=params;return this}};
