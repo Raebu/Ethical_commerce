@@ -1,6 +1,6 @@
 const main=document.querySelector('#main');
 const toast=document.querySelector('#toast');
-const state={user:null,stores:[],storeId:localStorage.getItem('ec-store')||'',tab:'overview',selectedProduct:'',editProduct:null,lastEvidenceId:'',authMode:'register'};
+const state={user:null,stores:[],storeId:localStorage.getItem('ec-store')||'',tab:'overview',selectedProduct:'',editProduct:null,lastEvidenceId:'',authMode:'register',salesEnabled:false,orderAccess:null};
 const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const price=(minor,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:currency||'GBP'}).format((Number(minor)||0)/100);
 const image=url=>{try{const u=new URL(url);return u.protocol==='https:'?u.href:''}catch{return ''}};
@@ -33,6 +33,19 @@ async function passport(productId){
  const d=await api('/api/public/products/'+encodeURIComponent(productId)),p=d.product;
  const claims=d.claims||[],events=d.events||[],cov=d.coverage;
  main.innerHTML='<div class="container"><div class="page-head"><a href="/" data-link class="small">← Back to discover</a><p class="eyebrow" style="margin:20px 0 8px">Product transparency passport</p></div><article class="detail"><div class="detail-top"><div class="detail-visual">'+art(p.image_url,p.name)+'</div><div class="detail-copy"><span class="pill">'+h(p.category||'Product')+'</span><h1>'+h(p.name)+'</h1><p>'+h(p.description||'No description provided.')+'</p><p class="price">'+h(price(p.price_minor,p.currency))+'</p><p><strong>Seller:</strong> '+h(p.store_name)+'<br><strong>Supplier:</strong> '+h(p.supplier_name||'Not disclosed')+'<br><strong>Supplier country:</strong> '+h(p.supplier_country||'Not disclosed')+'</p>'+currencyNotice+'</div></div></article><section class="section"><div class="section-heading"><div><span class="eyebrow">Evidence ledger</span><h2>What can we actually verify?</h2><p>Submitted statements are not automatically independent audits or certifications.</p></div></div>'+ (claims.length?'<div class="evidence-grid">'+claims.map(c=>'<article class="evidence-entry"><div class="row"><strong>'+h(c.facet)+'</strong><span class="spacer"></span>'+badge(c.evidence_status||'missing')+'</div><p>'+h(c.statement)+'</p><div class="small muted">Document: '+h(c.evidence_title||'Not supplied')+'<br>Issuer: '+h(c.issuer||'Unknown')+'</div>'+(image(c.source_url)?'<p><a href="'+h(image(c.source_url))+'" target="_blank" rel="noopener noreferrer">View external source ↗</a></p>':'')+'</article>').join('')+'</div>':noData('No supporting claims published','The seller has not submitted evidence-backed claims for this product. Do not assume it meets any ethical standard.'))+'</section><section class="section"><div class="section-heading"><div><span class="eyebrow">End to end</span><h2>Supply-chain journey</h2><p>'+h(cov.covered)+' of '+h(cov.total)+' disclosure milestones recorded. This is a completeness indicator, not an ethical rating.</p></div></div>'+(cov.missing.length?'<div class="notice">Missing milestones: '+h(cov.missing.join(', '))+'. These gaps have not been independently resolved.</div>':'<div class="notice green">All core milestones have entries. This does not confirm their accuracy.</div>')+(events.length?'<div class="panel" style="margin-top:18px"><div class="timeline">'+events.map(ev=>'<div class="timeline-item"><strong>'+h(ev.stage)+' · '+h(ev.actor_name)+'</strong><p>'+h(ev.place||'Location not provided')+' · '+h(ev.happened_at)+'</p><p>'+badge(ev.evidence_status||'missing')+' '+h(ev.evidence_title||'No linked evidence')+'</p></div>').join('')+'</div></div>':noData('No journey records yet','The supplier has not supplied a traceable production history.'))+'</section><section class="section"><div class="panel"><h2>Raise a concern</h2><p class="muted">Have information about a misleading claim, product safety or environmental harm? Reports go to authorised seller staff. Do not submit confidential worker information: an independent protected whistleblower channel is not yet available.</p><form data-action="report" class="form"><input type="hidden" name="productId" value="'+h(p.id)+'"><label>Concern category<select name="category" required><option value="misleading_claim">Misleading claim</option><option value="product_safety">Product safety</option><option value="animal_welfare">Animal welfare</option><option value="environment">Environment</option><option value="other">Other</option></select></label><label>Details<textarea name="message" rows="4" minlength="20" maxlength="2000" required></textarea></label><label>Email (optional)<input class="input" type="email" name="contactEmail" placeholder="For follow-up only"></label><button class="btn btn-dark">Submit concern</button></form></div></section></div>';
+ try{
+  const [hinfo,sellerInfo]=await Promise.all([api('/api/health'),api('/api/commerce/public/sellers/'+encodeURIComponent(p.store_slug))]);
+  const info=sellerInfo.seller||{},target=main.querySelector('.detail-copy');
+  if(target){
+   const urls=[['Returns',info.return_policy_url],['Shipping',info.shipping_policy_url],['Terms',info.terms_url],['Privacy',info.privacy_url]];
+   const legal=info.legal_seller_name?'<div class="evidence-entry"><strong>Seller-declared legal name: '+h(info.legal_seller_name)+'</strong><p>'+h(info.trading_address||'Address not provided')+'</p><p>Customer support: '+h(info.contact_email||'Not disclosed')+'</p><div class="row">'+urls.filter(x=>image(x[1])).map(x=>'<a href="'+h(x[1])+'" target="_blank" rel="noopener noreferrer" class="small">'+h(x[0])+' ↗</a>').join('')+'</div></div>':'<div class="notice">This seller has not completed its legal trading disclosures.</div>';
+   target.insertAdjacentHTML('beforeend',legal);
+   if(hinfo.payments==='configuration-enabled'&&urls.every(x=>image(x[1]))){
+    const offlineNotice=target.querySelector('.notice');if(offlineNotice)offlineNotice.remove();
+    target.insertAdjacentHTML('beforeend','<div class="panel"><h3>Secure seller checkout</h3><p class="small muted">Available for verified approved stores only. Stripe Checkout calculates applicable tax and shows the final payable total.</p><label><input id="ack-policies" type="checkbox"> I have reviewed the seller’s returns, shipping, privacy and terms disclosures.</label><button class="btn btn-dark" data-buy="'+h(p.id)+'" data-store="'+h(p.store_id)+'">Continue to secure checkout ↗</button></div>');
+   }
+  }
+ }catch(e){console.warn('Public seller disclosures unavailable',e)}
 }
 function landing(type){
  if(type==='sell')main.innerHTML='<div class="container"><div class="page-head"><span class="eyebrow">For independent sellers</span><h1>Sell with confidence.<br>Show your workings.</h1><p>Build a hosted store, organise suppliers and publish a transparent product record. Start without platform subscription fees — infrastructure usage and external providers may still incur charges.</p><a class="btn btn-dark" href="/dashboard" data-link>Open Seller Studio →</a></div><section class="section"><div class="three-features"><div class="feature"><div class="symbol">▦</div><h3>Your online storefront</h3><p>Store branding, published catalogues and editable product information.</p></div><div class="feature"><div class="symbol">◎</div><h3>Product passports</h3><p>Declare production stages, link evidence and surface missing information.</p></div><div class="feature"><div class="symbol">⇄</div><h3>Marketplace preparation</h3><p>Export a CSV catalogue today; approved API-based posting requires further integration.</p></div></div></section>'+currencyNotice+'</div>';
@@ -48,7 +61,7 @@ function input(name,label,value='',kind='text',extra=''){return '<label>'+h(labe
 function field(name,label,value='',rows=3){return '<label>'+h(label)+'<textarea name="'+h(name)+'" rows="'+rows+'">'+h(value)+'</textarea></label>'}
 function storeSelect(){return '<label class="small">Working store<select id="store-select" class="layout-select" aria-label="Select store">'+state.stores.map(s=>'<option value="'+h(s.id)+'" '+(s.id===state.storeId?'selected':'')+'>'+h(s.name)+'</option>').join('')+'</select></label>'}
 function panel(title,body){return '<div class="panel"><div class="section-title"><h2>'+h(title)+'</h2></div>'+body+'</div>'}
-const tabs=[['overview','Overview'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['reports','Concerns'],['settings','Store settings']];
+const tabs=[['overview','Overview'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['commerce','Verified selling'],['orders','Orders & returns'],['integrations','Store connections'],['reports','Concerns'],['settings','Store settings']];
 async function dashboard(){
  if(!state.user){auth();return}
  if(!state.stores.length){createStore();return}
@@ -67,6 +80,9 @@ async function dashboard(){
   if(state.tab==='passport')await traceability(work);
   if(state.tab==='channels')await channels(work);
   if(state.tab==='reports')await reports(work);
+  if(state.tab==='commerce')await merchantCompliance(work);
+  if(state.tab==='orders')await merchantOrders(work);
+  if(state.tab==='integrations')await connections(work);
   if(state.tab==='settings')settings(work,store);
  }catch(e){work.innerHTML=noData('Unable to load section',e.message)}
 }
@@ -107,11 +123,82 @@ async function storefront(slug){
  const data=await api('/api/public/stores/'+encodeURIComponent(slug)),s=data.store;
  main.innerHTML='<div class="container"><div class="page-head"><span class="eyebrow">Independent storefront</span><h1>'+h(s.name)+'</h1><p>'+h(s.description||'Discover the products and view their origin evidence.')+'</p><p class="small muted">Products and claims are supplied by the store owner. Evidence levels appear on individual passports.</p></div><section class="section">'+(data.products.length?'<div class="grid">'+data.products.map(productCard).join('')+'</div>':noData('No products listed','This seller has not published products yet.'))+'</section>'+currencyNotice+'</div>';
 }
+async function merchantCompliance(work){
+ const [email,details,connect]=await Promise.all([
+  api('/api/auth/email/status'),
+  api('/api/commerce/stores/'+state.storeId+'/compliance'),
+  api('/api/commerce/stores/'+state.storeId+'/connect-status')
+ ]);
+ const c=details.compliance||{};
+ const verify=email.verified?'<span class="badge">Email verified</span>':'<div class="notice">Email verification is required for verified seller onboarding. '+(email.serviceConfigured?'Use the button below to request a verification message.':'Transactional email is not configured yet.')+'</div><button class="btn btn-soft" data-op="send-verification">Email me a verification link</button>';
+ const compliance='<form class="form" data-action="seller-compliance"><div class="form-grid">'+
+  input('legalSellerName','Legal seller name',c.legal_seller_name||'','text','required minlength="3"')+
+  input('contactEmail','Public customer support email',c.contact_email||'','email','required')+
+  input('tradingAddress','Business correspondence address',c.trading_address||'','text','required minlength="12"')+
+  input('companyRegistration','Company number (if applicable)',c.company_registration||'')+
+  input('returnPolicyUrl','Public returns policy URL',c.return_policy_url||'','url','required')+
+  input('shippingPolicyUrl','Public shipping policy URL',c.shipping_policy_url||'','url','required')+
+  input('termsUrl','Public terms URL',c.terms_url||'','url','required')+
+  input('privacyUrl','Public privacy URL',c.privacy_url||'','url','required')+
+  '<div class="full">'+field('cancellationNotice','Statutory cancellation rights and exceptions',c.cancellation_notice||'',4)+'</div>'+
+  '<label class="full"><input type="checkbox" name="acceptConsumerDuties" value="yes" required> I confirm these details are truthful and I accept applicable consumer protection, returns, privacy and product-safety duties.</label></div><button class="btn btn-dark">Save seller disclosures</button></form>';
+ const status=connect.connected?'<span class="badge">'+(connect.chargesEnabled&&connect.payoutsEnabled?'Stripe charges and payouts enabled':'Stripe onboarding incomplete')+'</span>':'<span class="badge warn">No connected Stripe account</span>';
+ work.innerHTML=panel('Account verification',verify+'<p class="small muted">Email verification is not proof of company identity. Stripe performs financial identity checks separately.</p>')+
+ panel('Seller identity and legal disclosures',compliance)+
+ panel('Payments and merchant verification','<p class="muted">We use Stripe Connect Express for merchant financial onboarding. Customer payments are disabled platform-wide until legally approved and configured.</p>'+status+'<p><button class="btn btn-soft" data-op="stripe-onboard">Continue Stripe onboarding ↗</button></p>')+
+ panel('Store sales control','<div class="notice">Live sales are disabled by the platform unless the operator explicitly enables them after payment, tax and consumer-rights checks. Merchant approval never bypasses this platform gate.</div><button class="btn btn-light" data-op="pause-sales">Pause sales now</button>');
+}
+async function merchantOrders(work){
+ const [orders,requests,fulfil]=await Promise.all([
+  api('/api/commerce/stores/'+state.storeId+'/orders'),
+  api('/api/commerce/stores/'+state.storeId+'/requests'),
+  api('/api/commerce/stores/'+state.storeId+'/fulfillment')
+ ]);
+ const tab='<div class="notice">Only paid orders may be dispatched. Track each supplier request and give customers accurate shipment information. Customer rights and chargeback handling remain mandatory.</div>';
+ const t=orders.orders.length?'<div class="table-wrap"><table><thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Customer</th></tr></thead><tbody>'+
+  orders.orders.map(o=>'<tr><td class="code">'+h(o.id)+'</td><td>'+h(price(o.subtotal_minor,o.currency))+'</td><td>'+h(o.status)+'</td><td>'+h(o.customer_email||'Pending Stripe details')+'</td></tr>').join('')+
+  '</tbody></table></div>':noData('No transactions','Once seller onboarding and payments are approved, paid orders appear here.');
+ const f=fulfil.fulfillments.map(x=>'<div class="evidence-entry"><strong>Order '+h(x.order_id)+'</strong><p>Status: '+h(x.status)+'</p><form class="form" data-action="fulfillment"><input type="hidden" name="id" value="'+h(x.id)+'"><label>Next status<select name="status">'+['supplier_requested','supplier_accepted','dispatched','delivered','issue'].map(st=>'<option value="'+st+'">'+st.replaceAll('_',' ')+'</option>').join('')+'</select></label>'+input('carrier','Carrier',x.carrier)+input('trackingReference','Tracking number',x.tracking_reference)+input('trackingUrl','Tracking URL',x.tracking_url,'url')+field('sellerNotes','Operational notes',x.seller_notes)+
+ '<button class="btn btn-soft">Update fulfilment</button></form></div>').join('');
+ const r=requests.requests.map(x=>'<div class="evidence-entry"><strong>'+h(x.kind)+' · Order '+h(x.order_id)+'</strong><p>'+h(x.details)+'</p><p class="small muted">Contact: '+h(x.contact_email)+'</p><form data-action="consumer-request-status" class="form"><input type="hidden" name="id" value="'+h(x.id)+'"><label>Resolution status<select name="status">'+['in_review','accepted','rejected','resolved'].map(st=>'<option value="'+st+'">'+st+'</option>').join('')+'</select></label>'+field('resolutionNote','Reason and next steps')+'<button class="btn btn-soft">Record decision</button></form></div>').join('');
+ work.innerHTML=panel('Customer orders',tab+t)+panel('Supplier fulfilment',f||noData('No fulfillment tasks','When Stripe confirms payment, a fulfillment task appears.'))+panel('Consumer rights and return requests',r||noData('No requests','Customers can submit refunds, returns, faults and complaints using their private order reference.'));
+}
+async function connections(work){
+ const data=await api('/api/commerce/stores/'+state.storeId+'/connections');
+ const products=await api('/api/products?storeId='+state.storeId);
+ const available=data.connections.map(c=>'<div class="evidence-entry"><strong>'+h(c.channel)+'</strong><p>'+h(c.base_url)+'</p><span class="badge">'+h(c.status)+'</span></div>').join('');
+ const form='<form data-action="channel-connection" class="form"><label>Platform<select name="channel"><option value="woocommerce">WooCommerce</option><option value="shopify">Shopify custom app</option></select></label>'+input('baseUrl','Store HTTPS origin','','url','required')+input('consumerKey','WooCommerce consumer key (Woo only)')+input('consumerSecret','WooCommerce consumer secret (Woo only)')+input('accessToken','Shopify custom app token (Shopify only)')+'<p class="small muted">Credentials are encrypted server-side; configure the ENCRYPTION_MASTER_KEY secret before connecting.</p><button class="btn btn-dark">Save encrypted connection</button></form>';
+ const publish='<form data-action="external-publish" class="form"><label>Product<select name="productId">'+products.products.map(p=>'<option value="'+h(p.id)+'">'+h(p.name)+'</option>').join('')+'</select></label><input type="hidden" name="channel" value="woocommerce"><button class="btn btn-soft">Create WooCommerce draft listing</button></form>';
+ work.innerHTML=panel('Connected stores',available||noData('No connections yet','Add a merchant-managed store API connection below.'))+
+ panel('Manage store integration',form)+panel('External publishing', '<div class="notice">WooCommerce draft publishing can be enabled after credentials and approval. eBay, Amazon, Etsy and TikTok require official developer authorisation. Shopify publishing needs further integration.</div>'+publish);
+}
+async function verificationPage(){
+ const token=new URLSearchParams(location.search).get('token')||'';
+ history.replaceState({},'', '/verify');
+ if(!/^[a-f0-9]{64}$/.test(token)){main.innerHTML='<div class="container page-head"><h1>Invalid verification link</h1><a href="/dashboard" data-link>Return to Seller Studio</a></div>';return}
+ try{const d=await post('/api/auth/email/confirm',{token});main.innerHTML='<div class="container page-head"><h1>Email verified.</h1><p>You can now continue merchant onboarding.</p><a class="btn btn-dark" href="/dashboard" data-link>Continue to Seller Studio →</a></div>'}
+ catch(e){main.innerHTML='<div class="container page-head"><h1>Verification could not be completed</h1><p>'+h(e.message)+'</p><a href="/dashboard" data-link>Return to Seller Studio</a></div>'}
+}
+async function orderResult(){
+ const query=new URLSearchParams(location.search);
+ const orderId=query.get('order')||'',token=query.get('token')||'';
+ if(token)state.orderAccess={orderId,token};
+ history.replaceState({},'', '/order-result');
+ const access=state.orderAccess;
+ if(!access){main.innerHTML='<div class="container page-head"><h1>Order lookup</h1><p>Open your private order link after Checkout to see its status.</p></div>';return}
+ try{
+ const d=await post('/api/commerce/customer-order',{orderId:access.orderId,customerToken:access.token});
+ main.innerHTML='<div class="container page-head"><span class="eyebrow">Your purchase</span><h1>Order status: '+h(d.order.status.replaceAll('_',' '))+'</h1><p>Order reference: <span class="code">'+h(d.order.id)+'</span></p><p>Order total before any payment-service tax adjustments: '+h(price(d.order.subtotalMinor))+'</p><p class="notice">Payment, cancellation and refund eligibility are governed by the seller terms and applicable consumer law. A return to this page does not itself confirm a successful payment; wait for the paid order status.</p>'+
+ panel('Request help or a return','<form data-action="consumer-help" class="form"><label>Request type<select name="kind">'+['cancellation','return','refund','fault','complaint'].map(x=>'<option value="'+x+'">'+x+'</option>').join('')+'</select></label>'+input('contactEmail','Your email address','','email','required')+field('details','Describe your request')+'<button class="btn btn-dark">Submit request</button></form>')+'</div>';
+ }catch(e){main.innerHTML='<div class="container page-head"><h1>Order lookup failed</h1><p>'+h(e.message)+'</p></div>'}
+}
 async function render(){
  try{
   const pathname=location.pathname;
   if(pathname==='/'){await discover();return}
   if(pathname==='/about'||pathname==='/sell'){landing(pathname.slice(1));return}
+  if(pathname==='/verify'){await verificationPage();return}
+  if(pathname==='/order-result'){await orderResult();return}
   if(pathname==='/dashboard'){
    try{const d=await api('/api/me');state.user=d.user;state.stores=d.stores}catch{state.user=null;state.stores=[]}
    await dashboard();return;
@@ -127,10 +214,22 @@ document.addEventListener('click',async e=>{
  if(link){e.preventDefault();navigate(link.getAttribute('href'));return}
  const tab=e.target.closest('[data-tab]');
  if(tab){state.tab=tab.dataset.tab;state.editProduct=null;await dashboard();return}
+ const buy=e.target.closest('[data-buy]');
+ if(buy){
+  if(!document.querySelector('#ack-policies')?.checked){flash('Please review and acknowledge the seller policies before checkout.');return}
+  buy.disabled=true;
+  try{const result=await post('/api/commerce/checkout',{storeId:buy.dataset.store,idempotencyKey:crypto.randomUUID(),items:[{productId:buy.dataset.buy,quantity:1}],acceptPolicies:true});
+   if(result.checkoutUrl)location.assign(result.checkoutUrl);
+  }catch(err){flash(err.message);buy.disabled=false}
+  return;
+ }
  const op=e.target.closest('[data-op]');
  if(op){
   if(op.dataset.op==='toggle-auth'){state.authMode=state.authMode==='register'?'login':'register';auth()}
   if(op.dataset.op==='cancel-edit'){state.editProduct=null;await dashboard()}
+  if(op.dataset.op==='send-verification'){try{await post('/api/auth/email/request',{});flash('Verification email sent. Check your inbox.')}catch(ex){flash(ex.message)}}
+  if(op.dataset.op==='stripe-onboard'){try{const d=await post('/api/commerce/stores/'+state.storeId+'/onboarding',{});if(d.onboardingUrl)location.href=d.onboardingUrl}catch(ex){flash(ex.message)}}
+  if(op.dataset.op==='pause-sales'){try{await post('/api/commerce/stores/'+state.storeId+'/pause',{paused:true});flash('Store sales paused')}catch(ex){flash(ex.message)}}
   if(op.dataset.op==='logout'){try{await post('/api/auth/logout',{});state.user=null;state.stores=[];navigate('/dashboard')}catch(ex){flash(ex.message)}}
   return;
  }
@@ -150,6 +249,31 @@ document.addEventListener('submit',async e=>{
  const act=f.dataset.action;const data=Object.fromEntries(new FormData(f).entries());
  const btn=f.querySelector('button[type=submit],button:not([type])');if(btn)btn.disabled=true;
  try{
+  if(act==='seller-compliance'){
+   await post('/api/commerce/stores/'+state.storeId+'/compliance',{
+    ...data,acceptConsumerDuties:data.acceptConsumerDuties==='yes'
+   });flash('Seller disclosures saved');await dashboard();return
+  }
+  if(act==='fulfillment'){
+   await post('/api/commerce/fulfillment/'+data.id,data);flash('Fulfilment updated');await dashboard();return
+  }
+  if(act==='consumer-request-status'){
+   await post('/api/commerce/consumer-requests/'+data.id,data,'PATCH');flash('Customer request reviewed');await dashboard();return
+  }
+  if(act==='channel-connection'){
+   const credentials=data.channel==='shopify'?{accessToken:data.accessToken}:{consumerKey:data.consumerKey,consumerSecret:data.consumerSecret};
+   await post('/api/commerce/stores/'+state.storeId+'/connections',{channel:data.channel,baseUrl:data.baseUrl,credentials});
+   flash('Encrypted connection saved');await dashboard();return
+  }
+  if(act==='external-publish'){
+   const d=await post('/api/commerce/stores/'+state.storeId+'/publish',data);
+   flash(d.notice||'Draft listing prepared');await dashboard();return
+  }
+  if(act==='consumer-help'){
+   if(!state.orderAccess)throw Error('Order token missing');
+   await post('/api/commerce/customer-request',{...data,orderId:state.orderAccess.orderId,customerToken:state.orderAccess.token});
+   flash('Request received for seller review');f.reset();return
+  }
   if(act==='search'){await loadCatalog(data.q||'');return}
   if(act==='register'||act==='login'){await post('/api/auth/'+act,data);flash('Signed in');navigate('/dashboard');return}
   if(act==='store'){const result=await post('/api/stores',data);state.storeId=result.id;flash('Store created');navigate('/dashboard');return}

@@ -1,5 +1,7 @@
 import {Env,SessionUser,json,error,readBody,passwordHash,verifyPassword,createSession,session,sameOrigin,audit,digest} from './security';
 import {throttle} from './abuse';
+import {CommerceEnv} from './commercial-utils';
+import {commerceRoutes,scheduledCommerce} from './commercial-router';
 import {safeSlug,cleanText,safeHttpsUrl,moneyMinor,isKnownFacet,isKnownStage,traceCoverage,exportCsv} from './ethics';
 
 const id=()=>crypto.randomUUID();
@@ -30,17 +32,33 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
  const p=await env.DB.prepare('SELECT p.*,s.name AS store_name,s.slug AS store_slug,v.name AS supplier_name,v.country AS supplier_country FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN suppliers v ON v.id=p.supplier_id WHERE p.id=?').bind(productId).first<Record<string,unknown>>();
  if(!p||(publicOnly&&p.status!=='published'))return error('Product not found',404);
  const [claims,events]=await Promise.all([
-  env.DB.prepare('SELECT c.id,c.facet,c.statement,c.created_at,e.title AS evidence_title,e.issuer,e.source_url,e.status AS evidence_status,e.checked_at FROM passport_claims c LEFT JOIN evidence e ON e.id=c.evidence_id WHERE c.product_id=? ORDER BY c.created_at DESC').bind(productId).all(),
-  env.DB.prepare('SELECT t.id,t.stage,t.actor_name,t.place,t.happened_at,e.title AS evidence_title,e.source_url,e.status AS evidence_status FROM trace_events t LEFT JOIN evidence e ON e.id=t.evidence_id WHERE t.product_id=? ORDER BY t.happened_at ASC').bind(productId).all()
+  env.DB.prepare(`SELECT c.id,c.facet,c.statement,c.created_at,e.title AS evidence_title,e.issuer,e.source_url,CASE WHEN e.status='independently_verified' THEN
+ CASE WHEN EXISTS(
+ SELECT 1 FROM independent_assessments ia
+ JOIN approved_verifiers av ON ia.verifier_id=av.id
+ WHERE ia.evidence_id=e.id AND av.status='approved' AND ia.verdict='verified'
+ AND ia.valid_until>=date('now')
+ AND ia.id=(SELECT recent.id FROM independent_assessments recent WHERE recent.evidence_id=e.id ORDER BY recent.reviewed_at DESC,recent.rowid DESC LIMIT 1)
+ ) THEN 'independently_verified' ELSE 'evidence_checked' END
+ ELSE e.status END AS evidence_status,e.checked_at FROM passport_claims c LEFT JOIN evidence e ON e.id=c.evidence_id WHERE c.product_id=? ORDER BY c.created_at DESC`).bind(productId).all(),
+  env.DB.prepare(`SELECT t.id,t.stage,t.actor_name,t.place,t.happened_at,e.title AS evidence_title,e.source_url,CASE WHEN e.status='independently_verified' THEN
+ CASE WHEN EXISTS(
+ SELECT 1 FROM independent_assessments ia
+ JOIN approved_verifiers av ON ia.verifier_id=av.id
+ WHERE ia.evidence_id=e.id AND av.status='approved' AND ia.verdict='verified'
+ AND ia.valid_until>=date('now')
+ AND ia.id=(SELECT recent.id FROM independent_assessments recent WHERE recent.evidence_id=e.id ORDER BY recent.reviewed_at DESC,recent.rowid DESC LIMIT 1)
+ ) THEN 'independently_verified' ELSE 'evidence_checked' END
+ ELSE e.status END AS evidence_status FROM trace_events t LEFT JOIN evidence e ON e.id=t.evidence_id WHERE t.product_id=? ORDER BY t.happened_at ASC`).bind(productId).all()
  ]);
  const trace=events.results||[];
  return json({product:p,claims:claims.results||[],events:trace,coverage:traceCoverage(trace.map((e:any)=>String(e.stage)))});
 }
 async function api(req:Request,env:Env):Promise<Response>{
  const u=new URL(req.url),path=u.pathname,method=req.method;
- if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:'disabled',external_publishing:'disabled'});
+ if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:((env as CommerceEnv).SALES_ENABLED==='true'?'configuration-enabled':'disabled'),external_publishing:((env as CommerceEnv).PUBLISHING_ENABLED==='true'?'configuration-enabled':'disabled')});
  if(path==='/api/ready'&&method==='GET'){
-  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters']){
+  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters','merchant_compliance','orders','order_items','email_challenges','independent_assessments','channel_connections']){
    const result=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
    if(!result)throw Error('Missing schema');
   }
@@ -48,6 +66,7 @@ async function api(req:Request,env:Env):Promise<Response>{
   catch{return json({ready:false,database:'configured',schema:'missing',next:'Apply remote D1 migrations'},503)}
  }
  if(!['GET','HEAD','OPTIONS'].includes(method)&&!sameOrigin(req))return error('Origin validation failed',403);
+ const extended=await commerceRoutes(req,env as CommerceEnv);if(extended)return extended;
  if(method==='GET'&&path==='/api/public/products'){
   const search=str(u.searchParams.get('search'),80);
   const rows=await env.DB.prepare("SELECT p.id,p.name,p.description,p.category,p.price_minor,p.currency,p.image_url,p.stock,p.updated_at,s.name AS store_name,s.slug AS store_slug FROM products p JOIN stores s ON s.id=p.store_id WHERE p.status='published' AND (?='' OR p.name LIKE ? OR p.category LIKE ?) ORDER BY p.updated_at DESC LIMIT 100")
@@ -281,7 +300,7 @@ async function api(req:Request,env:Env):Promise<Response>{
  return error('API route not found',404);
 }
 export default {
- async fetch(request:Request,env:Env):Promise<Response>{
+ async fetch(request:Request,env:CommerceEnv):Promise<Response>{
   try{
    const path=new URL(request.url).pathname;
    const result=path.startsWith('/api/')?await api(request,env):await env.ASSETS.fetch(request);
@@ -300,4 +319,7 @@ export default {
    return error('The request could not be completed',500);
   }
  }
-} satisfies ExportedHandler<Env>;
+ ,async scheduled(_event:ScheduledController,env:CommerceEnv,ctx:ExecutionContext){
+  ctx.waitUntil(scheduledCommerce(env));
+ }
+} satisfies ExportedHandler<CommerceEnv>;

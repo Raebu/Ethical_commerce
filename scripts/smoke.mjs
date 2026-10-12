@@ -22,6 +22,24 @@ try{
  const cookie=owner.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie);
  const s=await call('/api/stores',{method:'POST',token:cookie,body:{name:'Ethical Store',slug:'smoke-'+crypto.randomUUID().slice(0,8)}});
  assert.equal(s.code,201,JSON.stringify(s.data));const storeId=s.data.id;
+ const unverified=await call('/api/auth/email/status',{token:cookie});assert.equal(unverified.code,200);assert.equal(unverified.data.verified,false);
+ assert.equal((await call('/api/auth/email/request',{method:'POST',token:cookie,body:{}})).code,503);
+ const cp=await call('/api/commerce/stores/'+storeId+'/compliance',{method:'POST',token:cookie,body:{
+  legalSellerName:'Ethical Demo Limited',tradingAddress:'1 Example Street, UK',
+  contactEmail:'support@example.com',companyRegistration:'00000000',
+  returnPolicyUrl:'https://example.com/returns',
+  shippingPolicyUrl:'https://example.com/shipping',
+  termsUrl:'https://example.com/terms',privacyUrl:'https://example.com/privacy',
+  cancellationNotice:'UK consumer cancellation and faulty goods rights apply to every qualifying order.',
+  acceptConsumerDuties:true
+ }});assert.equal(cp.code,200,JSON.stringify(cp.data));
+ const saved=await call('/api/commerce/stores/'+storeId+'/compliance',{token:cookie});assert.equal(saved.code,200);
+ assert.equal(saved.data.compliance.legal_seller_name,'Ethical Demo Limited');
+ const connect=await call('/api/commerce/stores/'+storeId+'/connect-status',{token:cookie});
+ assert.equal(connect.code,200);assert.equal(connect.data.connected,false);
+ assert.equal((await call('/api/commerce/stores/'+storeId+'/onboarding',{method:'POST',token:cookie,body:{}})).code,503);
+ assert.equal((await call('/api/commerce/checkout',{method:'POST',body:{storeId,idempotencyKey:crypto.randomUUID(),items:[],acceptPolicies:true}})).code,503);
+
  const supplier=await call('/api/suppliers',{method:'POST',token:cookie,body:{storeId,name:'Sample Supplier',country:'GB'}});assert.equal(supplier.code,201);
  const product=await call('/api/products',{method:'POST',token:cookie,body:{storeId,name:'Cotton Tote',priceMinor:1900,stock:5,supplierId:supplier.data.id}});
  assert.equal(product.code,201,JSON.stringify(product.data));const productId=product.data.id;
@@ -52,6 +70,10 @@ try{
  assert.equal(other.code,201);const otherCookie=other.headers.get('set-cookie')?.split(';')[0];
  assert.equal((await call('/api/products?storeId='+storeId,{token:otherCookie})).code,403);
  assert.equal((await call('/api/reports?storeId='+storeId,{token:otherCookie})).code,403);
+ assert.equal((await call('/api/commerce/stores/'+storeId+'/compliance',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/commerce/stores/'+storeId+'/orders',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/commerce/assurance/verifiers',{token:cookie})).code,403);
+
  const unknownEmail='unknown-'+crypto.randomUUID()+'@example.test';
  for(let i=0;i<8;i++)assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,401);
  assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,429,'Password guessing must be throttled');
