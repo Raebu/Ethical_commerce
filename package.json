@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs",
     "check": "npm run typecheck && npm run test",
     "db:local": "wrangler d1 migrations apply ethicalcommerce --local",
     "db:remote": "wrangler d1 migrations apply ethicalcommerce --remote",
