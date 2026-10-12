@@ -13,6 +13,8 @@ test('staging template creates an isolated, disabled-by-default Worker configura
  assert.match(config,/name = "ethical-commerce-staging"/);
  assert.match(config,/database_id = "11111111-2222-4333-8444-555555555555"/);
  assert.match(config,/RUNTIME_TIER = "staging"/);
+ assert.match(config,/EMAIL_FROM = "Ethical Commerce <verification@theraeburngroup.com>"/);
+ assert.doesNotMatch(config,/^\s*RESEND_API_KEY\s*=/m);
  assert.doesNotMatch(config,/REPLACE_WITH_SEPARATE_/);
  for(const flag of ['TEST_CHECKOUT_ENABLED','SALES_ENABLED','PUBLISHING_ENABLED','NOTIFICATIONS_ENABLED'])
   assert.ok(config.includes(flag+' = "false"'));
@@ -25,6 +27,11 @@ test('staging refuses malformed database IDs and missing confirmation',()=>{
  assert.throws(()=>buildStagingConfig(example,production,'invalid','DEPLOY_STAGING_ONLY'),/UUID/);
  assert.throws(()=>buildStagingConfig(example,production,stageId,''),/confirmation/);
 });
+test('staging refuses missing sender and leaked Resend API key in template',()=>{
+ assert.throws(()=>buildStagingConfig(example.replace('EMAIL_FROM = "Ethical Commerce <verification@theraeburngroup.com>"',''),production,stageId,'DEPLOY_STAGING_ONLY'),/Missing Ethical Commerce staging transactional sender/);
+ assert.throws(()=>buildStagingConfig(example+'\nRESEND_API_KEY = "placeholder"\n',production,stageId,'DEPLOY_STAGING_ONLY'),/credentials must never appear/);
+});
+
 test('staging refuses accidental flags enabled in the template',()=>{
  assert.throws(()=>buildStagingConfig(example.replace('SALES_ENABLED = "false"','SALES_ENABLED = "true"'),production,stageId,'DEPLOY_STAGING_ONLY'),/Unsafe staging/);
 });
