@@ -7,3 +7,6 @@ node_modules/
 .DS_Store
 coverage/
 dist/
+
+# Generated staging Worker config contains a database binding.
+wrangler.staging.toml
