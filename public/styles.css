@@ -9,3 +9,12 @@
 @media(max-width:900px){.hero{grid-template-columns:1fr;gap:30px;padding:50px 0}.hero-art{min-height:350px}.orbit{width:245px;height:245px}.orbit:after{width:300px;height:300px}.art-bag{width:170px;height:185px;font-size:5.5rem}.grid,.three-features{grid-template-columns:repeat(2,1fr)}.dashboard{grid-template-columns:1fr}.sidebar{display:flex;gap:6px;overflow-x:auto;padding:8px}.sidebar button{white-space:nowrap;width:auto;padding:12px}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.container{width:min(100% - 26px,1190px)}.header-inner{min-height:72px}.header-inner nav{display:none}.brand{font-size:1rem}.brand small{font-size:.52rem}.logo{width:36px;height:36px;font-size:1.35rem}.header-inner>.btn{padding:10px 12px;font-size:.75rem}.hero{padding:43px 0 30px}.hero h1{font-size:2.9rem}.hero p{font-size:1rem}.hero-art{min-height:300px}.grid,.three-features,.detail-top,.evidence-grid,.split,.form-grid,.footer-grid{grid-template-columns:1fr}.form-grid .full{grid-column:1}.section{padding:27px 0 50px}.section-heading{align-items:flex-start;flex-direction:column}.search,.search input{width:100%}.band{padding:28px;align-items:flex-start;flex-direction:column;margin-bottom:40px}.page-head{padding:37px 0 17px}.detail{padding:20px}.detail-visual{min-height:250px}.dashboard-header{align-items:flex-start;flex-direction:column}.dashboard-header h1{font-size:2rem}.panel{padding:19px}.stats{gap:9px}.stat{padding:14px}.footer-grid{gap:20px}.site-footer{padding:36px 0 22px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+
+/* Seller onboarding: visible persistent feedback and field-by-field guidance. */
+.inline-feedback{margin:12px 0;padding:12px 14px;border:1px solid #a9b9a9;border-radius:10px;background:#edf4ed;color:#193d2e;white-space:normal;line-height:1.5}
+.inline-feedback[hidden]{display:none}
+.inline-feedback[data-result="error"]{border-color:#ba6b55;background:#fff2ee;color:#812c20}
+.inline-feedback[data-result="success"]{border-color:#7c9b83;background:#e5f2e7;color:#194d31}
+.seller-field-error{display:block;margin-top:6px;font-size:.875rem;line-height:1.35;font-weight:600;color:#962e27}
+.form [aria-invalid="true"]{border-color:#b54139;box-shadow:0 0 0 2px rgba(181,65,57,.12)}
+.form button:disabled{opacity:.58;cursor:not-allowed}

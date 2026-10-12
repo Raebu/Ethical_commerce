@@ -5,10 +5,10 @@ const base='/api/commerce';
 
 async function requestVerification(req:Request,env:CommerceEnv):Promise<Response>{
  const user=await needLogin(req,env);if(isResponse(user))return user;
- const limited=await throttle(req,env,'email-verify',user.id,3,3600);if(limited)return limited;
- if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is not yet configured',503);
+ if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is unavailable on Ethical Commerce staging. The operator must configure RESEND_API_KEY and EMAIL_FROM in Cloudflare Workers settings.',503);
  const exists=await env.DB.prepare('SELECT email_verified_at FROM users WHERE id=?').bind(user.id).first<{email_verified_at:string|null}>();
  if(exists?.email_verified_at)return json({verified:true});
+ const limited=await throttle(req,env,'email-verify',user.id,3,3600);if(limited)return limited;
  const token=strongToken(),hash=await digest(token);
  await env.DB.prepare('DELETE FROM email_challenges WHERE user_id=?').bind(user.id).run();
  await env.DB.prepare('INSERT INTO email_challenges(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(hash,user.id,Date.now()+20*60*1000).run();
@@ -61,8 +61,20 @@ export async function identityRoutes(req:Request,env:CommerceEnv):Promise<Respon
   reg=textField(b.companyRegistration,100),returns=requireHttps(b.returnPolicyUrl),
   shipping=requireHttps(b.shippingPolicyUrl),terms=requireHttps(b.termsUrl),privacy=requireHttps(b.privacyUrl),
   notice=textField(b.cancellationNotice,1000);
-  if(legal.length<3||address.length<12||!contact||!returns||!shipping||!terms||!privacy||notice.length<30||b.acceptConsumerDuties!==true)
-   return error('Complete legal seller identity, contact, address, published policies, cancellation information and acceptance of consumer duties');
+  // Return field-level, safe validation messages rather than one generic error.
+  // The seller must supply their own genuine policy URLs; testing must not
+  // silently invent documents or relax the consumer protection requirements.
+  const fieldErrors:Record<string,string>={};
+  if(legal.length<3)fieldErrors.legalSellerName='Enter your legal seller name (at least 3 characters).';
+  if(address.length<12)fieldErrors.tradingAddress='Enter your full business correspondence address (at least 12 characters).';
+  if(!contact)fieldErrors.contactEmail='Enter a valid public customer-support email address.';
+  if(!returns)fieldErrors.returnPolicyUrl='Enter a complete HTTPS URL for your published returns policy.';
+  if(!shipping)fieldErrors.shippingPolicyUrl='Enter a complete HTTPS URL for your published shipping policy.';
+  if(!terms)fieldErrors.termsUrl='Enter a complete HTTPS URL for your published seller terms.';
+  if(!privacy)fieldErrors.privacyUrl='Enter a complete HTTPS URL for your published privacy policy.';
+  if(notice.length<30)fieldErrors.cancellationNotice='Explain statutory cancellation rights and any exceptions (at least 30 characters).';
+  if(b.acceptConsumerDuties!==true)fieldErrors.acceptConsumerDuties='Read and accept the applicable consumer protection, returns, privacy and product-safety duties.';
+  if(Object.keys(fieldErrors).length)return json({error:'Please correct the highlighted seller details.',fieldErrors},400);
   const existing=await env.DB.prepare('SELECT stripe_account_id FROM merchant_compliance WHERE store_id=?').bind(storeId).first<{stripe_account_id:string|null}>();
   await env.DB.prepare(`INSERT INTO merchant_compliance
    (store_id,legal_seller_name,trading_address,contact_email,company_registration,return_policy_url,shipping_policy_url,terms_url,privacy_url,cancellation_notice,consumer_terms_accepted_at,updated_at)
