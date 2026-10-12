@@ -4,3 +4,5 @@ Production D1 database UUID: 5070811a-9990-4ae3-bd72-cf394ee63be6
 Deployment target: ethical-commerce-staging
 No live payments, marketplace publishing, supplier dispatch or transactional emails authorised.
 The GitHub Actions staging workflow must fail closed if staging deploy credentials are absent.
+
+Retry requested after deploy-time Cloudflare 504s. Workflow now includes three bounded Worker-only attempts.
