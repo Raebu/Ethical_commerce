@@ -1,4 +1,5 @@
-import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils.ts';
+import type {CommerceEnv} from './commercial-utils.ts';
+import {needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils.ts';
 import {json,error,readBody,digest} from './security.ts';
 import {throttle} from './abuse.ts';
 import {cancelUnpaid,reserveStockStatements} from './inventory.ts';
