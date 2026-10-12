@@ -8,3 +8,5 @@ The GitHub Actions staging workflow must fail closed if staging deploy credentia
 Retry requested after deploy-time Cloudflare 504s. Workflow now includes three bounded Worker-only attempts.
 
 2026-10-12: Apply reviewed Stripe livemode webhook isolation and operator status probe (PR #18); keep all payment flags disabled.
+
+2026-10-12: Redeploy isolated staging to validate PBKDF2 iteration-limit seller-registration fix (PR #19). Payments, supplier emails, and publishing remain disabled.
