@@ -50,9 +50,5 @@ jobs:
         run: npx wrangler d1 migrations apply ethicalcommerce-staging --remote --config wrangler.staging.toml
       - name: Deploy isolated staging Worker
         run: npx wrangler deploy --config wrangler.staging.toml
-      - name: Verify staging is responsive
-        run: |
-          node --input-type=module -e '
-          const origin="https://ethical-commerce-staging."+process.env.CLOUDFLARE_ACCOUNT_ID+".workers.dev";
-          console.log("Staging deployed; verify the actual workers.dev hostname in the Cloudflare deployment logs.");
-          '
+      - name: Completion
+        run: echo 'Inspect the Wrangler deployment output for the staging URL.'
