@@ -61,7 +61,7 @@ function input(name,label,value='',kind='text',extra=''){return '<label>'+h(labe
 function field(name,label,value='',rows=3){return '<label>'+h(label)+'<textarea name="'+h(name)+'" rows="'+rows+'">'+h(value)+'</textarea></label>'}
 function storeSelect(){return '<label class="small">Working store<select id="store-select" class="layout-select" aria-label="Select store">'+state.stores.map(s=>'<option value="'+h(s.id)+'" '+(s.id===state.storeId?'selected':'')+'>'+h(s.name)+'</option>').join('')+'</select></label>'}
 function panel(title,body){return '<div class="panel"><div class="section-title"><h2>'+h(title)+'</h2></div>'+body+'</div>'}
-const tabs=[['overview','Overview'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['commerce','Verified selling'],['orders','Orders & returns'],['integrations','Store connections'],['reports','Concerns'],['settings','Store settings']];
+const tabs=[['overview','Overview'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['commerce','Verified selling'],['orders','Orders & returns'],['supplier-orders','Supplier orders'],['integrations','Store connections'],['reports','Concerns'],['settings','Store settings']];
 async function dashboard(){
  if(!state.user){auth();return}
  if(!state.stores.length){createStore();return}
@@ -82,6 +82,7 @@ async function dashboard(){
   if(state.tab==='reports')await reports(work);
   if(state.tab==='commerce')await merchantCompliance(work);
   if(state.tab==='orders')await merchantOrders(work);
+  if(state.tab==='supplier-orders')await merchantSupplierOrders(work);
   if(state.tab==='integrations')await connections(work);
   if(state.tab==='settings')settings(work,store);
  }catch(e){work.innerHTML=noData('Unable to load section',e.message)}
@@ -162,6 +163,36 @@ async function merchantOrders(work){
  '<button class="btn btn-soft">Update fulfilment</button></form></div>').join('');
  const r=requests.requests.map(x=>'<div class="evidence-entry"><strong>'+h(x.kind)+' · Order '+h(x.order_id)+'</strong><p>'+h(x.details)+'</p><p class="small muted">Contact: '+h(x.contact_email)+'</p><form data-action="consumer-request-status" class="form"><input type="hidden" name="id" value="'+h(x.id)+'"><label>Resolution status<select name="status">'+['in_review','accepted','rejected','resolved'].map(st=>'<option value="'+st+'">'+st+'</option>').join('')+'</select></label>'+field('resolutionNote','Reason and next steps')+'<button class="btn btn-soft">Record decision</button></form></div>').join('');
  work.innerHTML=panel('Customer orders',tab+t)+panel('Supplier fulfilment',f||noData('No fulfillment tasks','When Stripe confirms payment, a fulfillment task appears.'))+panel('Consumer rights and return requests',r||noData('No requests','Customers can submit refunds, returns, faults and complaints using their private order reference.'));
+}
+async function merchantSupplierOrders(work){
+ const [orders,suppliers,po]=await Promise.all([
+  api('/api/commerce/stores/'+state.storeId+'/orders'),
+  api('/api/commerce/stores/'+state.storeId+'/supplier-order-settings'),
+  api('/api/commerce/stores/'+state.storeId+'/purchase-orders')
+ ]);
+ const paid=orders.orders.filter(o=>['paid','fulfilled','partially_refunded'].includes(o.status));
+ const settings='<form class="form" data-action="supplier-order-settings"><label>Supplier<select name="supplierId" required>'+
+ suppliers.suppliers.map(x=>'<option value="'+h(x.id)+'">'+h(x.name)+'</option>').join('')+
+ '</select></label>'+input('orderingEmail','Authorised supplier orders email','','email','required')+
+ '<label><input type="checkbox" name="confirmSupplierContact" required> I confirm this is an authorised supplier contact and we have an appropriate business relationship.</label>'+
+ '<button class="btn btn-dark">Save supplier authorisation</button></form>';
+ const settingsOverview=suppliers.suppliers.map(x=>'<div class="evidence-entry"><strong>'+h(x.name)+'</strong><p>'+h(x.ordering_email||'No ordering email provided')+'</p><span class="badge '+(x.merchant_confirmed_authorization?'':'warn')+'">'+(x.merchant_confirmed_authorization?'Merchant authorised':'Not authorised')+'</span></div>').join('');
+ const eligible='<form class="form" data-action="supplier-order-prepare"><label>Paid customer order<select name="orderId" required>'+
+ paid.map(x=>'<option value="'+h(x.id)+'">'+h(x.id)+' · '+h(x.status)+'</option>').join('')+'</select></label>'+
+ '<button class="btn btn-soft" '+(paid.length?'':'disabled')+'>Prepare supplier order drafts</button></form>';
+ const prepared=po.purchaseOrders.map(x=>'<article class="evidence-entry"><div class="row"><strong>'+h(x.supplier_name)+'</strong><span class="spacer"></span><span class="badge">'+h(x.status)+'</span></div>'+
+ '<p class="small">Customer order '+h(x.order_id)+'<br>Supplier order '+h(x.id)+'<br>Email: '+h(x.notification_status||'not queued')+'</p>'+
+ (x.status==='draft'?'<form class="form" data-action="supplier-order-send"><input name="id" type="hidden" value="'+h(x.id)+'">'+
+ '<label><input type="checkbox" name="authorize" required> I explicitly authorise sending this purchase order to the supplier without customer personal data.</label>'+
+ '<button class="btn btn-dark">Email supplier purchase order</button></form>':'')+
+ (['requested','accepted','dispatched','issue'].includes(x.status)?'<form class="form" data-action="supplier-order-status"><input name="id" type="hidden" value="'+h(x.id)+'"><label>Update status<select name="status">'+
+ ['accepted','dispatched','delivered','issue'].map(st=>'<option value="'+st+'">'+st+'</option>').join('')+'</select></label>'+
+ input('supplierReference','Supplier dispatch reference')+'<button class="btn btn-soft">Record supplier update</button></form>':'')+
+ '</article>').join('');
+ work.innerHTML=panel('Supplier purchasing rules','<div class="notice">No supplier order is sent automatically. Merchants must authorise the business address and explicitly approve each paid order. Supplier responses and shipment status are seller-declared unless verified externally.</div>')+
+ panel('Approved ordering contacts',settings+(settingsOverview?'<div class="stack" style="margin-top:16px">'+settingsOverview+'</div>':''))+
+ panel('Prepare a supplier purchase order',paid.length?eligible:noData('No paid orders','Supplier order drafts can only be prepared from confirmed paid orders.'))+
+ panel('Supplier order queue',prepared?'<div class="stack">'+prepared+'</div>':noData('No supplier orders yet','Prepare a paid order for each of its recorded product suppliers.'));
 }
 async function connections(work){
  const data=await api('/api/commerce/stores/'+state.storeId+'/connections');
@@ -249,6 +280,23 @@ document.addEventListener('submit',async e=>{
  const act=f.dataset.action;const data=Object.fromEntries(new FormData(f).entries());
  const btn=f.querySelector('button[type=submit],button:not([type])');if(btn)btn.disabled=true;
  try{
+  if(act==='supplier-order-settings'){
+   await post('/api/commerce/stores/'+state.storeId+'/supplier-order-settings',{supplierId:data.supplierId,orderingEmail:data.orderingEmail,confirmSupplierContact:data.confirmSupplierContact==='on'});
+   flash('Supplier contact authorised by merchant');await dashboard();return
+  }
+  if(act==='supplier-order-prepare'){
+   const result=await post('/api/commerce/stores/'+state.storeId+'/supplier-orders',{orderId:data.orderId});
+   flash('Created '+result.created+' supplier order draft(s). No emails sent.');await dashboard();return
+  }
+  if(act==='supplier-order-send'){
+   if(data.authorize!=='on')throw Error('Explicit authorisation required');
+   const result=await post('/api/commerce/purchase-orders/'+data.id+'/send',{confirm:'SEND_TO_SUPPLIER'});
+   flash(result.queued?'Supplier order queued for delivery':'Supplier order was already queued');await dashboard();return
+  }
+  if(act==='supplier-order-status'){
+   await post('/api/commerce/purchase-orders/'+data.id+'/status',{status:data.status,supplierReference:data.supplierReference});
+   flash('Supplier status recorded as a merchant declaration');await dashboard();return
+  }
   if(act==='seller-compliance'){
    await post('/api/commerce/stores/'+state.storeId+'/compliance',{
     ...data,acceptConsumerDuties:data.acceptConsumerDuties==='yes'
