@@ -6,3 +6,5 @@ No live payments, marketplace publishing, supplier dispatch or transactional ema
 The GitHub Actions staging workflow must fail closed if staging deploy credentials are absent.
 
 Retry requested after deploy-time Cloudflare 504s. Workflow now includes three bounded Worker-only attempts.
+
+2026-10-12: Apply reviewed Stripe livemode webhook isolation and operator status probe (PR #18); keep all payment flags disabled.
