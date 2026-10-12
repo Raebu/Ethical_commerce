@@ -158,6 +158,29 @@ async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
   await env.DB.prepare("UPDATE consumer_requests SET status=?,resolution_note=?,updated_at=datetime('now') WHERE id=?").bind(status,note,requestPath[1]).run();
   return json({updated:true,note:'This does not automatically issue a card refund'});
  }
+ const shipping=path.match(/^\/api\/commerce\/orders\/([a-f0-9-]{36})\/shipping$/);
+ if(shipping&&method==='GET'){
+  const user=await needLogin(req,env);if(isResponse(user))return user;
+  const order=await env.DB.prepare('SELECT id,store_id,status,stripe_session_id,stripe_connected_account FROM orders WHERE id=?').bind(shipping[1]).first<any>();
+  // Delivery addresses are sensitive: restrict viewing to the verified store owner.
+  if(!order||!await owner(env,user,order.store_id))return error('Forbidden',403);
+  if(!['paid','fulfilled','partially_refunded'].includes(order.status)||!order.stripe_session_id)return error('No paid delivery record available',409);
+  if(!env.STRIPE_SECRET_KEY)return error('Stripe delivery data access is not configured',503);
+  try{
+   const result=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
+   if(result.payment_status!=='paid'||result.id!==order.stripe_session_id)return error('Order payment status could not be confirmed',409);
+   const shippingDetails=result.collected_information?.shipping_details||result.shipping_details;
+   if(!shippingDetails?.address)return error('Shipping address unavailable; contact the customer using your approved support process',409);
+   const a=shippingDetails.address;
+   return json({orderId:order.id,recipient:shippingDetails.name||'',address:{
+    line1:a.line1||'',line2:a.line2||'',city:a.city||'',state:a.state||'',postcode:a.postal_code||'',country:a.country||''
+   },notice:'Confidential customer delivery information. Do not forward without appropriate consent and a lawful fulfilment purpose.'});
+  }catch(e){
+   if(e instanceof Response)return e;
+   console.error('Stripe shipping lookup failed');
+   return error('Unable to retrieve Stripe delivery details',503);
+  }
+ }
  const refund=path.match(/^\/api\/commerce\/orders\/([a-f0-9-]{36})\/refund$/);
  if(refund&&method==='POST'){
   const user=await needLogin(req,env);if(isResponse(user))return user;
