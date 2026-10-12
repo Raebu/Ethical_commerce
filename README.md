@@ -9,9 +9,9 @@
 - Digital product passports with claims **explicitly labelled** as declared, evidence checked or independently verified.
 - Human-rights, environmental, animal-welfare, safety and commercial-transparency claims; no composite greenwashing score.
 - Exportable channel catalogues, manually approved listing workflow and extensible adapters.
-- Consumer complaints and confidential reporting with staff review.
+- Consumer complaints with authorised seller review. **Confidential worker reporting is not yet available**; the seller-facing form blocks worker disclosures.
 - Accessible, mobile-first storefront and merchant console.
-- Audit trail, tenant isolation and Cloudflare D1 persistence.
+- Audit trail, tenant isolation, D1-backed throttling for high-risk endpoints, restrictive browser headers and Cloudflare D1 persistence.
 
 ## Run locally
 
@@ -28,6 +28,8 @@ For production: apply `npm run db:remote` **after reviewing the migration** to i
 ## Important launch limitations
 
 **This is an implementable foundation, not a certified or production-approved marketplace.** It deliberately does not charge customers or pretend to send real orders to suppliers. Stripe Connect/merchant-of-record decisions, payment flows, marketplace OAuth/API approvals, supplier contracts, independent verification, upload security, anti-spam, legal policies and a live operational review process are mandatory before public commercial rollout. Channel publishing initially exports a genuine CSV; no channel is falsely labelled connected.
+
+The public deployment is a **pre-launch preview**, not a verified marketplace. Registration currently has no email ownership verification, and abuse counters do not replace Cloudflare WAF, Turnstile, external security review or platform moderation. The site is marked noindex until a compliant public launch.
 
 An ethical claim is not verified just because a merchant submits it. Platform administrators may independently review submitted evidence, but review by itself is not independent certification. Public records display their actual evidence status and gaps.
 

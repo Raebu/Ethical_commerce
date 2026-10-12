@@ -1,4 +1,5 @@
 import {Env,SessionUser,json,error,readBody,passwordHash,verifyPassword,createSession,session,sameOrigin,audit,digest} from './security';
+import {throttle} from './abuse';
 import {safeSlug,cleanText,safeHttpsUrl,moneyMinor,isKnownFacet,isKnownStage,traceCoverage,exportCsv} from './ethics';
 
 const id=()=>crypto.randomUUID();
@@ -39,7 +40,11 @@ async function api(req:Request,env:Env):Promise<Response>{
  const u=new URL(req.url),path=u.pathname,method=req.method;
  if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:'disabled',external_publishing:'disabled'});
  if(path==='/api/ready'&&method==='GET'){
-  try{await env.DB.prepare('SELECT id FROM users LIMIT 1').first();return json({ready:true,database:'configured',schema:'available'});}
+  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters']){
+   const result=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
+   if(!result)throw Error('Missing schema');
+  }
+  return json({ready:true,database:'configured',schema:'available'});}
   catch{return json({ready:false,database:'configured',schema:'missing',next:'Apply remote D1 migrations'},503)}
  }
  if(!['GET','HEAD','OPTIONS'].includes(method)&&!sameOrigin(req))return error('Origin validation failed',403);
@@ -61,6 +66,9 @@ async function api(req:Request,env:Env):Promise<Response>{
  if(method==='POST'&&path==='/api/reports'){
   const b=await readBody(req),productId=str(b.productId,60),category=str(b.category,35),message=str(b.message,2000),contact=str(b.contactEmail,254);
   if(!reportTypes.includes(category)||message.length<20)return error('Choose a category and describe the concern (at least 20 characters)');
+  // This form is read by seller staff. It must never accept sensitive worker disclosures.
+  if(category==='worker_welfare')return error('Protected worker reports are not accepted through this seller-visible form. Use an independently protected channel.',503);
+  const limited=await throttle(req,env,'public-report','report',4,3600);if(limited)return limited;
   if(contact&&!isValidEmail(contact))return error('Invalid contact email');
   const product=await env.DB.prepare("SELECT id,store_id FROM products WHERE id=? AND status='published'").bind(productId).first<{store_id:string}>();
   if(!product)return error('Product not found',404);
@@ -70,6 +78,7 @@ async function api(req:Request,env:Env):Promise<Response>{
  if(method==='POST'&&path==='/api/auth/register'){
   const b=await readBody(req),email=str(b.email,254).toLowerCase(),password=String(b.password??'');
   if(!isValidEmail(email)||password.length<12||password.length>128)return error('Valid email and 12-128 character password required');
+  const limited=await throttle(req,env,'registration','signup',5,3600);if(limited)return limited;
   if(await env.DB.prepare('SELECT id FROM users WHERE email=?').bind(email).first())return error('Account already exists',409);
   const uid=id();
   await env.DB.prepare('INSERT INTO users(id,email,password_hash) VALUES(?,?,?)').bind(uid,email,await passwordHash(password)).run();
@@ -78,6 +87,8 @@ async function api(req:Request,env:Env):Promise<Response>{
  }
  if(method==='POST'&&path==='/api/auth/login'){
   const b=await readBody(req),email=str(b.email,254).toLowerCase(),password=String(b.password??'');
+  const limitedIp=await throttle(req,env,'login-ip','login',20,900);if(limitedIp)return limitedIp;
+  const limitedAccount=await throttle(req,env,'login-identifier',email,8,900);if(limitedAccount)return limitedAccount;
   const record=await env.DB.prepare('SELECT id,email,password_hash FROM users WHERE email=?').bind(email).first<{id:string;email:string;password_hash:string}>();
   if(!record||!await verifyPassword(password,record.password_hash))return error('Invalid credentials',401);
   const cookie=await createSession(req,env,record.id);
@@ -85,6 +96,9 @@ async function api(req:Request,env:Env):Promise<Response>{
  }
  const user=await session(req,env);
  if(!user)return error('Sign in required',401);
+ if(method==='POST'&&['/api/stores','/api/suppliers','/api/products','/api/evidence','/api/claims','/api/trace','/api/listings'].includes(path)){
+  const limited=await throttle(req,env,'merchant-create',user.id,120,3600);if(limited)return limited;
+ }
  if(method==='POST'&&path==='/api/auth/logout'){
   const token=req.headers.get('cookie')?.match(/ec_session=([0-9a-f]{64})/)?.[1];
   if(token)await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await digest(token)).run();
@@ -220,18 +234,18 @@ async function api(req:Request,env:Env):Promise<Response>{
    env.DB.prepare('SELECT COUNT(*) AS count FROM products WHERE store_id=?').bind(sid).first<{count:number}>(),
    env.DB.prepare('SELECT COUNT(*) AS count FROM suppliers WHERE store_id=?').bind(sid).first<{count:number}>(),
    env.DB.prepare('SELECT COUNT(*) AS count FROM passport_claims WHERE store_id=?').bind(sid).first<{count:number}>(),
-   env.DB.prepare("SELECT COUNT(*) AS count FROM complaints WHERE store_id=? AND status!='resolved'").bind(sid).first<{count:number}>()
+   env.DB.prepare("SELECT COUNT(*) AS count FROM complaints WHERE store_id=? AND category!='worker_welfare' AND status!='resolved'").bind(sid).first<{count:number}>()
   ]);
   return json({products:products?.count||0,suppliers:suppliers?.count||0,claims:claims?.count||0,openReports:reports?.count||0,orders:0,livePayments:false});
  }
  if(method==='GET'&&path==='/api/reports'){
   const sid=str(u.searchParams.get('storeId'),60);if(!await access(env,user,sid,true))return error('Forbidden',403);
-  const r=await env.DB.prepare('SELECT id,product_id,category,message,contact_email,status,created_at FROM complaints WHERE store_id=? ORDER BY created_at DESC LIMIT 100').bind(sid).all();
+  const r=await env.DB.prepare("SELECT id,product_id,category,message,contact_email,status,created_at FROM complaints WHERE store_id=? AND category!='worker_welfare' ORDER BY created_at DESC LIMIT 100").bind(sid).all();
   return json({reports:r.results||[]});
  }
  const reportRoute=path.match(/^\/api\/reports\/([a-f0-9-]{36})$/);
  if(method==='PATCH'&&reportRoute){
-  const report=await env.DB.prepare('SELECT id,store_id FROM complaints WHERE id=?').bind(reportRoute[1]).first<{store_id:string}>();
+  const report=await env.DB.prepare("SELECT id,store_id FROM complaints WHERE id=? AND category!='worker_welfare'").bind(reportRoute[1]).first<{store_id:string}>();
   if(!report||!await access(env,user,report.store_id,true))return error('Forbidden',403);
   const b=await readBody(req),status=str(b.status,30);
   if(!['open','reviewing','resolved'].includes(status))return error('Invalid report status');
@@ -246,6 +260,10 @@ async function api(req:Request,env:Env):Promise<Response>{
  }
  if(path.startsWith('/api/admin/')){
   if(!user.is_platform_admin)return error('Platform administrator required',403);
+  if(method==='GET'&&path==='/api/admin/worker-reports'){
+   const r=await env.DB.prepare("SELECT id,store_id,product_id,category,message,contact_email,status,created_at FROM complaints WHERE category='worker_welfare' ORDER BY created_at DESC LIMIT 100").all();
+   return json({reports:r.results||[],warning:'Sensitive records: authorised independent review only'});
+  }
   if(method==='GET'&&path==='/api/admin/evidence'){
    const r=await env.DB.prepare("SELECT e.id,e.title,e.issuer,e.source_url,e.status,e.details,p.name AS product_name FROM evidence e JOIN products p ON e.product_id=p.id WHERE e.status='supplier_declared' ORDER BY e.created_at DESC LIMIT 100").all();
    return json({evidence:r.results||[]});
@@ -266,13 +284,15 @@ export default {
  async fetch(request:Request,env:Env):Promise<Response>{
   try{
    const path=new URL(request.url).pathname;
-   if(path.startsWith('/api/')){
-    const result=await api(request,env);
-    result.headers.set('referrer-policy','strict-origin-when-cross-origin');
-    result.headers.set('x-frame-options','DENY');
-    return result;
-   }
-   return env.ASSETS.fetch(request);
+   const result=path.startsWith('/api/')?await api(request,env):await env.ASSETS.fetch(request);
+   const headers=new Headers(result.headers);
+   headers.set('referrer-policy','strict-origin-when-cross-origin');
+   headers.set('x-frame-options','DENY');
+   headers.set('x-content-type-options','nosniff');
+   headers.set('permissions-policy','camera=(), microphone=(), geolocation=(), payment=()');
+   headers.set('content-security-policy',"default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'");
+   headers.set('x-robots-tag','noindex, nofollow, noarchive');
+   return new Response(result.body,{status:result.status,statusText:result.statusText,headers});
   }catch(e){
    const m=info(e);
    if(m.includes('JSON')||m.includes('Invalid')||m.includes('required')||m.includes('large'))return error(m,400);
