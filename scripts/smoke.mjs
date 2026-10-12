@@ -2,7 +2,7 @@ import {spawn} from 'node:child_process';
 import {strict as assert} from 'node:assert';
 import {setTimeout as pause} from 'node:timers/promises';
 const base='http://127.0.0.1:8787';
-const server=spawn('npx',['wrangler','dev','--local','--port','8787'],{stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true'}});
+const server=spawn('npx',['wrangler','dev','--local','--port','8787'],{stdio:['ignore','pipe','pipe'],detached:true,env:{...process.env,CI:'true'}});
 let output='';
 for(const stream of [server.stdout,server.stderr])stream.on('data',b=>{output=(output+String(b)).slice(-30000)});
 async function call(path,{method='GET',body,token}={}){
@@ -47,4 +47,4 @@ try{
  const csrf=await fetch(base+'/api/stores',{method:'POST',headers:{origin:'https://untrusted.example','content-type':'application/json',cookie},body:JSON.stringify({name:'Attack'})});
  assert.equal(csrf.status,403);
  console.log('PASS end-to-end: register, isolation, store, product, supplier, claim, production trace, marketplace record, CSV, complaints and CSRF');
-}finally{server.kill('SIGTERM')}
+}finally{try{process.kill(-server.pid,'SIGTERM')}catch{server.kill('SIGTERM')}}
