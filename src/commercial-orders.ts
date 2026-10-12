@@ -2,6 +2,7 @@ import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongT
 import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
 import {cancelUnpaid,reserveStockStatements} from './inventory';
+import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications';
 
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(env.SALES_ENABLED!=='true'||!env.STRIPE_SECRET_KEY||env.STRIPE_TAX_ENABLED!=='true')
@@ -30,7 +31,7 @@ export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(existing)return json({existing:true,orderId:existing.id,status:existing.status,note:'An existing checkout key cannot initiate a duplicate order. Generate a new key for a new cart.'},409);
  const products:any[]=[];
  for(const [productId,qty] of quantities){
-  const p=await env.DB.prepare("SELECT id,store_id,name,price_minor,currency,stock,status FROM products WHERE id=? AND store_id=?").bind(productId,storeId).first<any>();
+  const p=await env.DB.prepare("SELECT id,store_id,name,price_minor,currency,stock,status,supplier_id FROM products WHERE id=? AND store_id=?").bind(productId,storeId).first<any>();
   if(!p||p.status!=='published'||p.currency!=='GBP'||p.stock<qty||p.price_minor<1)return error('A product is unavailable or out of stock',409);
   products.push({...p,quantity:qty});
  }
@@ -98,6 +99,8 @@ async function consumerRequest(req:Request,env:CommerceEnv):Promise<Response>{
  if(!order||order.access_token_hash!==await digest(token))return error('Order not found',404);
  await env.DB.prepare('INSERT INTO consumer_requests(id,order_id,store_id,kind,details,contact_email) VALUES(?,?,?,?,?,?)')
   .bind(crypto.randomUUID(),orderId,order.store_id,kind,details,contact).run();
+ const last=await env.DB.prepare('SELECT id FROM consumer_requests WHERE order_id=? ORDER BY rowid DESC LIMIT 1').bind(orderId).first<{id:string}>();
+ if(last)await queueConsumerRequestNotification(env,orderId,last.id);
  return json({received:true,note:'Your request was recorded for the legal seller. A seller response is still required.'},201);
 }
 async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
@@ -142,6 +145,7 @@ async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
   await env.DB.prepare("UPDATE order_fulfillment SET status=?,carrier=?,tracking_reference=?,tracking_url=?,seller_notes=?,updated_at=datetime('now') WHERE id=?")
    .bind(status,carrier,tracking,url,notes,f.id).run();
   if(status==='delivered')await env.DB.prepare("UPDATE orders SET status='fulfilled',updated_at=datetime('now') WHERE id=? AND status='paid'").bind(f.order_id).run();
+  if(status==='dispatched')await queueTrackingNotification(env,f.order_id,tracking);
   return json({updated:true,status});
  }
  const requestPath=path.match(/^\/api\/commerce\/consumer-requests\/([a-f0-9-]{36})$/);
