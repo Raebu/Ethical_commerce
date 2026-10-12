@@ -13,6 +13,7 @@ export interface ReservableProduct {
  store_id: string;
  price_minor: number;
  quantity: number;
+ supplier_id?: string|null;
 }
 
 /** All statements must be included in the SAME env.DB.batch as order creation. */
@@ -30,9 +31,9 @@ export function reserveStockStatements(
     WHERE id=?`)
    .bind(product.store_id,product.price_minor,product.quantity,product.quantity,product.id),
   env.DB.prepare(`INSERT INTO order_items
-    (id,order_id,product_id,product_name,quantity,unit_price_minor)
-    VALUES(?,?,?,?,?,?)`)
-   .bind(crypto.randomUUID(),orderId,product.id,product.name,product.quantity,product.price_minor)
+    (id,order_id,product_id,product_name,quantity,unit_price_minor,supplier_id)
+    VALUES(?,?,?,?,?,?,?)`)
+   .bind(crypto.randomUUID(),orderId,product.id,product.name,product.quantity,product.price_minor,product.supplier_id||null)
  ]);
 }
 

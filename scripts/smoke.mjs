@@ -41,6 +41,15 @@ try{
  assert.equal((await call('/api/commerce/checkout',{method:'POST',body:{storeId,idempotencyKey:crypto.randomUUID(),items:[],acceptPolicies:true}})).code,503);
 
  const supplier=await call('/api/suppliers',{method:'POST',token:cookie,body:{storeId,name:'Sample Supplier',country:'GB'}});assert.equal(supplier.code,201);
+ const supStatus=await call('/api/commerce/stores/'+storeId+'/supplier-order-settings',{token:cookie});
+ assert.equal(supStatus.code,200);assert.equal(supStatus.data.suppliers.length,1);
+ const supAdd=await call('/api/commerce/stores/'+storeId+'/supplier-order-settings',{method:'POST',token:cookie,body:{
+  supplierId:supplier.data.id,orderingEmail:'fulfilment@example.com',confirmSupplierContact:true
+ }});assert.equal(supAdd.code,200);
+ const unsent=await call('/api/commerce/stores/'+storeId+'/purchase-orders',{token:cookie});
+ assert.equal(unsent.code,200);assert.equal(unsent.data.purchaseOrders.length,0);
+ const notificationDisabled=await call('/api/commerce/purchase-orders/'+crypto.randomUUID()+'/send',{method:'POST',token:cookie,body:{confirm:'SEND_TO_SUPPLIER'}});
+ assert.equal(notificationDisabled.code,403);
  const product=await call('/api/products',{method:'POST',token:cookie,body:{storeId,name:'Cotton Tote',priceMinor:1900,stock:5,supplierId:supplier.data.id}});
  assert.equal(product.code,201,JSON.stringify(product.data));const productId=product.data.id;
  assert.equal((await call('/api/public/products/'+productId)).code,404);
@@ -72,6 +81,9 @@ try{
  assert.equal((await call('/api/reports?storeId='+storeId,{token:otherCookie})).code,403);
  assert.equal((await call('/api/commerce/stores/'+storeId+'/compliance',{token:otherCookie})).code,403);
  assert.equal((await call('/api/commerce/stores/'+storeId+'/orders',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/commerce/stores/'+storeId+'/supplier-order-settings',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/commerce/stores/'+storeId+'/purchase-orders',{token:otherCookie})).code,403);
+
  assert.equal((await call('/api/commerce/assurance/verifiers',{token:cookie})).code,403);
 
  const unknownEmail='unknown-'+crypto.randomUUID()+'@example.test';

@@ -1,10 +1,11 @@
-import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps} from './commercial-utils';
+import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils';
 import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
 import {cancelUnpaid,reserveStockStatements} from './inventory';
+import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications';
 
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
- if(env.SALES_ENABLED!=='true'||!env.STRIPE_SECRET_KEY||env.STRIPE_TAX_ENABLED!=='true')
+ if(!liveCheckoutConfigured(env))
   return error('Live checkout is disabled until verified payments, tax and consumer safeguards are configured',503);
  const limited=await throttle(req,env,'checkout','new-order',10,3600);if(limited)return limited;
  const b=await readBody(req),storeId=cleanId(b.storeId),key=textField(b.idempotencyKey,100);
@@ -30,7 +31,7 @@ export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(existing)return json({existing:true,orderId:existing.id,status:existing.status,note:'An existing checkout key cannot initiate a duplicate order. Generate a new key for a new cart.'},409);
  const products:any[]=[];
  for(const [productId,qty] of quantities){
-  const p=await env.DB.prepare("SELECT id,store_id,name,price_minor,currency,stock,status FROM products WHERE id=? AND store_id=?").bind(productId,storeId).first<any>();
+  const p=await env.DB.prepare("SELECT id,store_id,name,price_minor,currency,stock,status,supplier_id FROM products WHERE id=? AND store_id=?").bind(productId,storeId).first<any>();
   if(!p||p.status!=='published'||p.currency!=='GBP'||p.stock<qty||p.price_minor<1)return error('A product is unavailable or out of stock',409);
   products.push({...p,quantity:qty});
  }
@@ -96,8 +97,10 @@ async function consumerRequest(req:Request,env:CommerceEnv):Promise<Response>{
  const limited=await throttle(req,env,'consumer-request','new',4,3600);if(limited)return limited;
  const order=await env.DB.prepare('SELECT id,store_id,access_token_hash FROM orders WHERE id=?').bind(orderId).first<any>();
  if(!order||order.access_token_hash!==await digest(token))return error('Order not found',404);
+ const requestId=crypto.randomUUID();
  await env.DB.prepare('INSERT INTO consumer_requests(id,order_id,store_id,kind,details,contact_email) VALUES(?,?,?,?,?,?)')
-  .bind(crypto.randomUUID(),orderId,order.store_id,kind,details,contact).run();
+  .bind(requestId,orderId,order.store_id,kind,details,contact).run();
+ await queueConsumerRequestNotification(env,orderId,requestId);
  return json({received:true,note:'Your request was recorded for the legal seller. A seller response is still required.'},201);
 }
 async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
@@ -142,6 +145,7 @@ async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
   await env.DB.prepare("UPDATE order_fulfillment SET status=?,carrier=?,tracking_reference=?,tracking_url=?,seller_notes=?,updated_at=datetime('now') WHERE id=?")
    .bind(status,carrier,tracking,url,notes,f.id).run();
   if(status==='delivered')await env.DB.prepare("UPDATE orders SET status='fulfilled',updated_at=datetime('now') WHERE id=? AND status='paid'").bind(f.order_id).run();
+  if(status==='dispatched')await queueTrackingNotification(env,f.order_id,tracking);
   return json({updated:true,status});
  }
  const requestPath=path.match(/^\/api\/commerce\/consumer-requests\/([a-f0-9-]{36})$/);
@@ -153,6 +157,29 @@ async function sellerRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
   if(!['in_review','accepted','rejected','resolved'].includes(status)||!note)return error('Valid status and reason required');
   await env.DB.prepare("UPDATE consumer_requests SET status=?,resolution_note=?,updated_at=datetime('now') WHERE id=?").bind(status,note,requestPath[1]).run();
   return json({updated:true,note:'This does not automatically issue a card refund'});
+ }
+ const shipping=path.match(/^\/api\/commerce\/orders\/([a-f0-9-]{36})\/shipping$/);
+ if(shipping&&method==='GET'){
+  const user=await needLogin(req,env);if(isResponse(user))return user;
+  const order=await env.DB.prepare('SELECT id,store_id,status,stripe_session_id,stripe_connected_account FROM orders WHERE id=?').bind(shipping[1]).first<any>();
+  // Delivery addresses are sensitive: restrict viewing to the verified store owner.
+  if(!order||!await owner(env,user,order.store_id))return error('Forbidden',403);
+  if(!['paid','fulfilled','partially_refunded'].includes(order.status)||!order.stripe_session_id)return error('No paid delivery record available',409);
+  if(!env.STRIPE_SECRET_KEY)return error('Stripe delivery data access is not configured',503);
+  try{
+   const result=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
+   if(result.payment_status!=='paid'||result.id!==order.stripe_session_id)return error('Order payment status could not be confirmed',409);
+   const shippingDetails=result.collected_information?.shipping_details||result.shipping_details;
+   if(!shippingDetails?.address)return error('Shipping address unavailable; contact the customer using your approved support process',409);
+   const a=shippingDetails.address;
+   return json({orderId:order.id,recipient:shippingDetails.name||'',address:{
+    line1:a.line1||'',line2:a.line2||'',city:a.city||'',state:a.state||'',postcode:a.postal_code||'',country:a.country||''
+   },notice:'Confidential customer delivery information. Do not forward without appropriate consent and a lawful fulfilment purpose.'});
+  }catch(e){
+   if(e instanceof Response)return e;
+   console.error('Stripe shipping lookup failed');
+   return error('Unable to retrieve Stripe delivery details',503);
+  }
  }
  const refund=path.match(/^\/api\/commerce\/orders\/([a-f0-9-]{36})\/refund$/);
  if(refund&&method==='POST'){

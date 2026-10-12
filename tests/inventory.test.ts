@@ -31,7 +31,8 @@ class LocalD1 {
   const abuse=readFileSync(new URL('../migrations/0002_abuse_controls.sql',import.meta.url),'utf8');
   const commerce=readFileSync(new URL('../migrations/0003_commercial_foundations.sql',import.meta.url),'utf8');
   assert.equal(/CREATE\s+TRIGGER/i.test(commerce.replace(/--[^\n]*/g,'')),false,'Remote D1 migration must not rely on trigger statements');
-  this.conn.exec(base);this.conn.exec(abuse);this.conn.exec(commerce);
+  const newLayer=readFileSync(new URL('../migrations/0004_order_notifications.sql',import.meta.url),'utf8');
+  this.conn.exec(base);this.conn.exec(abuse);this.conn.exec(commerce);this.conn.exec(newLayer);
   const tables=this.conn.prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name IN ('orders','order_items','merchant_compliance')").get() as {n:number};
   assert.equal(tables.n,3);
   this.conn.prepare("INSERT INTO users(id,email,password_hash) VALUES('owner','owner@example.test','stub')").run();

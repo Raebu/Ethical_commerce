@@ -9,6 +9,8 @@ export interface CommerceEnv extends Env {
  SALES_ENABLED?:string;
  STRIPE_TAX_ENABLED?:string;
  PUBLISHING_ENABLED?:string;
+ NOTIFICATIONS_ENABLED?:string;
+ COMMERCIAL_LAUNCH_APPROVED?:string;
  ALLOWED_PUBLISHER_DOMAINS?:string;
  ENCRYPTION_MASTER_KEY?:string;
 }
@@ -112,3 +114,15 @@ export async function needLogin(req:Request,env:CommerceEnv):Promise<SessionUser
  return (await authenticate(req,env))||error('Sign in required',401);
 }
 export function isResponse(x:SessionUser|Response):x is Response{return x instanceof Response;}
+
+/** All mandatory payment dependencies must be present before any card payment can start. */
+export function liveCheckoutConfigured(env:CommerceEnv):boolean{
+ return env.SALES_ENABLED==='true'
+  &&env.COMMERCIAL_LAUNCH_APPROVED==='true'
+  &&env.STRIPE_TAX_ENABLED==='true'
+  &&env.NOTIFICATIONS_ENABLED==='true'
+  &&!!env.STRIPE_SECRET_KEY
+  &&!!env.STRIPE_CONNECT_WEBHOOK_SECRET
+  &&!!env.RESEND_API_KEY
+  &&!!env.EMAIL_FROM;
+}

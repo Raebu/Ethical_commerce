@@ -1,6 +1,7 @@
 import {CommerceEnv,stripe,stripeSignatureValid} from './commercial-utils';
 import {json,error} from './security';
 import {cancelUnpaid} from './inventory';
+import {queuePaidNotifications,queueRefundNotification} from './notifications';
 type StripeEvent={id:string;type:string;account?:string;data?:{object?:any}};
 async function applyCompleted(env:CommerceEnv,event:StripeEvent,session:any):Promise<void>{
  const orderId=session?.metadata?.order_id||session?.client_reference_id,storeId=session?.metadata?.store_id;
@@ -18,6 +19,7 @@ async function applyCompleted(env:CommerceEnv,event:StripeEvent,session:any):Pro
   env.DB.prepare("INSERT OR IGNORE INTO order_fulfillment(id,order_id,store_id,status) VALUES(?,?,?,'awaiting_action')")
    .bind(crypto.randomUUID(),order.id,order.store_id)
  ]);
+ await queuePaidNotifications(env,order.id);
 }
 export async function processStripeEvent(env:CommerceEnv,event:StripeEvent):Promise<void>{
  const obj=event.data?.object||{};
@@ -41,6 +43,7 @@ export async function processStripeEvent(env:CommerceEnv,event:StripeEvent):Prom
   const isFull=Number(obj.amount_refunded)>=Number(obj.amount);
   await env.DB.prepare("UPDATE orders SET status=?,updated_at=datetime('now') WHERE id=? AND status IN ('paid','fulfilled','partially_refunded')")
    .bind(isFull?'refunded':'partially_refunded',order.id).run();
+  await queueRefundNotification(env,order.id,event.id);
  }
 }
 export async function stripeWebhook(req:Request,env:CommerceEnv):Promise<Response>{
