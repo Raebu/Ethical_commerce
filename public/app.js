@@ -155,9 +155,9 @@ async function merchantOrders(work){
   api('/api/commerce/stores/'+state.storeId+'/requests'),
   api('/api/commerce/stores/'+state.storeId+'/fulfillment')
  ]);
- const tab='<div class="notice">Only paid orders may be dispatched. Track each supplier request and give customers accurate shipment information. Customer rights and chargeback handling remain mandatory.</div>';
+ const tab='<div id="delivery-details" class="notice" role="status" hidden></div><div class="notice">Only paid orders may be dispatched. Track each supplier request and give customers accurate shipment information. Customer rights and chargeback handling remain mandatory.</div>';
  const t=orders.orders.length?'<div class="table-wrap"><table><thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Customer</th></tr></thead><tbody>'+
-  orders.orders.map(o=>'<tr><td class="code">'+h(o.id)+'</td><td>'+h(price(o.subtotal_minor,o.currency))+'</td><td>'+h(o.status)+'</td><td>'+h(o.customer_email||'Pending Stripe details')+'</td></tr>').join('')+
+  orders.orders.map(o=>'<tr><td class="code">'+h(o.id)+'</td><td>'+h(price(o.subtotal_minor,o.currency))+'</td><td>'+h(o.status)+'</td><td>'+h(o.customer_email||'Pending Stripe details')+(o.status==='paid'||o.status==='fulfilled'?'<button type="button" class="btn btn-light btn-small" data-shipping="'+h(o.id)+'">View delivery address</button>':'')+'</td></tr>').join('')+
   '</tbody></table></div>':noData('No transactions','Once seller onboarding and payments are approved, paid orders appear here.');
  const f=fulfil.fulfillments.map(x=>'<div class="evidence-entry"><strong>Order '+h(x.order_id)+'</strong><p>Status: '+h(x.status)+'</p><form class="form" data-action="fulfillment"><input type="hidden" name="id" value="'+h(x.id)+'"><label>Next status<select name="status">'+['supplier_requested','supplier_accepted','dispatched','delivered','issue'].map(st=>'<option value="'+st+'">'+st.replaceAll('_',' ')+'</option>').join('')+'</select></label>'+input('carrier','Carrier',x.carrier)+input('trackingReference','Tracking number',x.tracking_reference)+input('trackingUrl','Tracking URL',x.tracking_url,'url')+field('sellerNotes','Operational notes',x.seller_notes)+
  '<button class="btn btn-soft">Update fulfilment</button></form></div>').join('');
@@ -252,6 +252,18 @@ document.addEventListener('click',async e=>{
   try{const result=await post('/api/commerce/checkout',{storeId:buy.dataset.store,idempotencyKey:crypto.randomUUID(),items:[{productId:buy.dataset.buy,quantity:1}],acceptPolicies:true});
    if(result.checkoutUrl)location.assign(result.checkoutUrl);
   }catch(err){flash(err.message);buy.disabled=false}
+  return;
+ }
+ const shipping=e.target.closest('[data-shipping]');
+ if(shipping){
+  shipping.disabled=true;
+  try{
+   const d=await api('/api/commerce/orders/'+encodeURIComponent(shipping.dataset.shipping)+'/shipping');
+   const address=[d.recipient,d.address.line1,d.address.line2,d.address.city,d.address.state,d.address.postcode,d.address.country].filter(Boolean);
+   const destination=document.querySelector('#delivery-details');
+   if(destination){destination.textContent='CONFIDENTIAL — '+address.join(', ');destination.hidden=false}
+   else flash('Delivery address retrieved but the display is unavailable');
+  }catch(ex){flash(ex.message)}finally{shipping.disabled=false}
   return;
  }
  const op=e.target.closest('[data-op]');
