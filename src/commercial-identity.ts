@@ -5,10 +5,10 @@ const base='/api/commerce';
 
 async function requestVerification(req:Request,env:CommerceEnv):Promise<Response>{
  const user=await needLogin(req,env);if(isResponse(user))return user;
- const limited=await throttle(req,env,'email-verify',user.id,3,3600);if(limited)return limited;
- if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is not yet configured',503);
+ if(!env.RESEND_API_KEY||!env.EMAIL_FROM)return error('Email verification is unavailable on Ethical Commerce staging. The operator must configure RESEND_API_KEY and EMAIL_FROM in Cloudflare Workers settings.',503);
  const exists=await env.DB.prepare('SELECT email_verified_at FROM users WHERE id=?').bind(user.id).first<{email_verified_at:string|null}>();
  if(exists?.email_verified_at)return json({verified:true});
+ const limited=await throttle(req,env,'email-verify',user.id,3,3600);if(limited)return limited;
  const token=strongToken(),hash=await digest(token);
  await env.DB.prepare('DELETE FROM email_challenges WHERE user_id=?').bind(user.id).run();
  await env.DB.prepare('INSERT INTO email_challenges(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(hash,user.id,Date.now()+20*60*1000).run();
