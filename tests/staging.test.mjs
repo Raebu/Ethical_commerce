@@ -28,3 +28,16 @@ test('staging refuses malformed database IDs and missing confirmation',()=>{
 test('staging refuses accidental flags enabled in the template',()=>{
  assert.throws(()=>buildStagingConfig(example.replace('SALES_ENABLED = "false"','SALES_ENABLED = "true"'),production,stageId,'DEPLOY_STAGING_ONLY'),/Unsafe staging/);
 });
+
+test('approved staging workflow is bound to a separate actual D1 database',()=>{
+ const workflow=readFileSync(new URL('../.github/workflows/staging.yml',import.meta.url),'utf8');
+ const supplied='11d8e5ce-2bbb-491a-9099-b6e7085ea0a1';
+ assert.ok(workflow.includes(supplied));
+ assert.ok(workflow.includes('ops/staging-deploy-request.txt'));
+ assert.ok(workflow.includes('environment: staging'));
+ assert.ok(workflow.includes('secrets.CLOUDFLARE_API_TOKEN'));
+ assert.notEqual(supplied.toLowerCase(),liveId?.toLowerCase());
+ const config=buildStagingConfig(example,production,supplied,'DEPLOY_STAGING_ONLY');
+ assert.ok(config.includes('database_id = "'+supplied+'"'));
+ assert.ok(!config.includes('database_id = "'+liveId+'"'));
+});

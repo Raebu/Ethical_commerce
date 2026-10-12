@@ -10,8 +10,8 @@ This runbook is for operators commissioning Ethical Commerce. The production Wor
 
 ## 1. Create a separate Cloudflare staging environment
 
-1. In Cloudflare, create a fresh **D1 database** named `ethicalcommerce-staging`. Never re-use production's `ethicalcommerce` database ID.
-2. Copy `wrangler.staging.example.toml` to a private working file named `wrangler.staging.toml`; replace its placeholder with the staging database UUID. Do not check any API secret into GitHub. Configure the staging Worker as `ethical-commerce-staging` and use its own `workers.dev` address.
+1. A separate staging D1 database was supplied with UUID `11d8e5ce-2bbb-491a-9099-b6e7085ea0a1` in Cloudflare account `e01b58b8d08d2c97284b2a46a13f3815`. Confirm its actual database name is `ethicalcommerce-staging`. Never reuse the production database ID `5070811a-9990-4ae3-bd72-cf394ee63be6`.
+2. The GitHub staging workflow now defaults to the supplied staging UUID. It generates `wrangler.staging.toml` from `wrangler.staging.example.toml` and rejects production D1 reuse; it does not expose provider credentials. The Worker name will be `ethical-commerce-staging`.
 3. From an authenticated terminal or Cloudflare build environment with D1 write permission, run:
 
    ```sh
@@ -21,6 +21,13 @@ This runbook is for operators commissioning Ethical Commerce. The production Wor
 
 4. Check `https://YOUR-STAGING-WORKER.workers.dev/api/ready`. It should return `ready:true`. Create a **test** merchant account in this staging environment only; do not import real customers or supplier lists.
 5. Keep every feature flag false until the appropriate test configuration and test-store onboarding are actually ready.
+
+
+### Deployment from GitHub Actions
+
+The workflow [.github/workflows/staging.yml](../.github/workflows/staging.yml) is available through the GitHub Actions **Staging deployment (isolated)** page. It can be invoked manually by entering `DEPLOY_STAGING_ONLY`, or by an authorised commit to `ops/staging-deploy-request.txt` on the protected `main` branch. Its default database UUID is already set to the separate D1 database. It will refuse to deploy if the repository / staging environment has no `CLOUDFLARE_API_TOKEN` secret. Configure an appropriately restricted Cloudflare token with Workers edit and D1 edit permissions under GitHub **Settings → Secrets and variables → Actions**, preferably scoped to the `staging` environment. Do **not** store this secret in the repository or chat.
+
+Account ID `e01b58b8d08d2c97284b2a46a13f3815` is configured as a non-secret fallback; if an existing `CLOUDFLARE_ACCOUNT_ID` secret differs, correct it before running staging. Once the workflow finishes, inspect the actual Wrangler output for the staging URL and check `/api/ready`. The staging site is not verified or live merely because its configuration is committed.
 
 ## 2. Use Stripe test-mode keys, not the connected live account
 
