@@ -1,5 +1,7 @@
 -- Add an auditable, explicitly authorised fulfilment and notification layer.
 -- No external contact or live sale is automatically enabled by this migration.
+-- Snapshot supplier at checkout so later catalogue edits cannot reroute a paid order.
+ALTER TABLE order_items ADD COLUMN supplier_id TEXT REFERENCES suppliers(id);
 CREATE TABLE IF NOT EXISTS supplier_order_settings (
  supplier_id TEXT PRIMARY KEY REFERENCES suppliers(id) ON DELETE CASCADE,
  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
