@@ -1,29 +1,8 @@
 import type {CommerceEnv} from './commercial-utils.ts';
-import {needLogin,isResponse,safeEmail,htmlSafe} from './commercial-utils.ts';
+import {needLogin,isResponse,safeEmail,stripeKeyMode,sandboxCheckoutConfigured,productionCheckoutConfigured} from './commercial-utils.ts';
 import {json,error} from './security.ts';
 import {throttle} from './abuse.ts';
 
-export type StripeKeyMode='live'|'test'|'missing'|'unrecognized';
-export function stripeKeyMode(secret:unknown):StripeKeyMode{
- if(typeof secret!=='string'||!secret.trim())return 'missing';
- if(/^sk_live_[A-Za-z0-9]+$/.test(secret)||/^rk_live_[A-Za-z0-9]+$/.test(secret))return 'live';
- if(/^sk_test_[A-Za-z0-9]+$/.test(secret)||/^rk_test_[A-Za-z0-9]+$/.test(secret))return 'test';
- return 'unrecognized';
-}
-export function sandboxCheckoutConfigured(env:CommerceEnv):boolean{
- return env.RUNTIME_TIER==='staging'&&env.TEST_CHECKOUT_ENABLED==='true'
-  &&stripeKeyMode(env.STRIPE_SECRET_KEY)==='test'
-  &&!!env.STRIPE_CONNECT_WEBHOOK_SECRET
-  &&env.STRIPE_TAX_ENABLED==='true';
-}
-export function productionCheckoutConfigured(env:CommerceEnv):boolean{
- return env.RUNTIME_TIER==='production'
-  &&env.SALES_ENABLED==='true'&&env.COMMERCIAL_LAUNCH_APPROVED==='true'
-  &&env.STRIPE_TAX_ENABLED==='true'&&env.NOTIFICATIONS_ENABLED==='true'
-  &&stripeKeyMode(env.STRIPE_SECRET_KEY)==='live'
-  &&!!env.STRIPE_CONNECT_WEBHOOK_SECRET&&!!env.RESEND_API_KEY
-  &&!!safeEmail(env.EMAIL_FROM);
-}
 export function commissioningSnapshot(env:CommerceEnv){
  const staging=env.RUNTIME_TIER==='staging',production=env.RUNTIME_TIER==='production';
  const stripeMode=stripeKeyMode(env.STRIPE_SECRET_KEY);
