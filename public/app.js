@@ -232,6 +232,7 @@ async function operatorDashboard(){
  main.innerHTML='<div class="container"><div class="dashboard-header"><div><span class="eyebrow">Platform operations</span><h1>Commercial commissioning</h1><p class="muted">Private configuration checks. These do not constitute provider approval or evidence of live delivery.</p></div><div class="actions"><a class="btn btn-light btn-small" href="/dashboard" data-link>Seller Studio →</a></div></div>'+
  panel('Payment safety','<p><strong>Deployment:</strong> '+h(d.tier)+' · <strong>Stripe key mode:</strong> '+h(d.stripeMode)+'</p><p><strong>Sandbox checkout:</strong> '+(d.sandboxCheckoutEnabled?'Configured':'Disabled')+' · <strong>Live checkout:</strong> '+(d.liveCheckoutEnabled?'Configured':'Disabled')+'</p><div class="notice">Payment flags alone do not certify legal, tax, supplier or security readiness. Do not switch on live payments to test integration.</div>')+
  panel('Integration checks','<div class="table-wrap"><table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>'+cells+'</tbody></table></div>')+
+ panel('Stripe account verification','<p>Check the Stripe account configured in this environment. This read-only request does not create charges or modify Stripe.</p><form class="form" data-action="operator-stripe-status"><button class="btn btn-soft">Check Stripe account readiness</button></form><div id="operator-stripe-result" class="notice" role="status" hidden></div>')+
  panel('Transactional email test','<p>Only available to a platform administrator with a previously verified email address. Sends to the signed-in account only, never to real customers or suppliers.</p><form class="form" data-action="operator-test-email"><label><input type="checkbox" name="confirm" value="yes" required> I authorise one test email to my verified account.</label><button class="btn btn-soft">Send one self-test email</button></form>')+
  panel('Provider setup','<p>Separate staging database, test-mode Stripe Connect credentials and transactional sender credentials must be configured outside GitHub before an end-to-end test can be run.</p><p><a href="https://github.com/Raebu/Ethical_commerce/blob/main/docs/SANDBOX_COMMISSIONING.md" target="_blank" rel="noopener noreferrer">Open staging commissioning guide ↗</a></p>');
 }
@@ -324,6 +325,22 @@ document.addEventListener('submit',async e=>{
   if(act==='supplier-order-status'){
    await post('/api/commerce/purchase-orders/'+data.id+'/status',{status:data.status,supplierReference:data.supplierReference});
    flash('Supplier status recorded as a merchant declaration');await dashboard();return
+  }
+  if(act==='operator-stripe-status'){
+   const r=await api('/api/commerce/admin/stripe-status');
+   const area=document.querySelector('#operator-stripe-result');
+   if(area){
+    area.hidden=false;
+    area.textContent=r.providerChecked?
+     'Stripe mode: '+r.mode+'; account type: '+r.accountType+
+     '; charges enabled: '+r.chargesEnabled+'; payouts enabled: '+r.payoutsEnabled+
+     '; card payments: '+r.cardPayments+'; transfers: '+r.transfers+
+     '; outstanding requirements: '+r.outstandingRequirements+
+     '; test-card readiness: '+r.readyForTestCardCheckout+'. '+
+     r.note:
+     'Stripe check unavailable: '+r.reason;
+   }
+   return;
   }
   if(act==='operator-test-email'){
    if(data.confirm!=='yes')throw Error('Please explicitly authorise this test email');
