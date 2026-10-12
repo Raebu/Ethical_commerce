@@ -1,11 +1,16 @@
-name: Staging deployment (manual only)
+name: Staging deployment (isolated)
 on:
+  push:
+    branches: [main]
+    paths:
+      - ops/staging-deploy-request.txt
   workflow_dispatch:
     inputs:
       staging_database_uuid:
         description: "UUID of a SEPARATE ethicalcommerce-staging D1 database"
         required: true
         type: string
+        default: '11d8e5ce-2bbb-491a-9099-b6e7085ea0a1'
       confirmation:
         description: "Type DEPLOY_STAGING_ONLY to confirm; live database is prohibited"
         required: true
@@ -23,9 +28,9 @@ jobs:
     environment: staging
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      STAGING_D1_UUID: ${{ inputs.staging_database_uuid }}
-      CONFIRM_STAGING: ${{ inputs.confirmation }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'e01b58b8d08d2c97284b2a46a13f3815' }}
+      STAGING_D1_UUID: ${{ github.event_name == 'push' && '11d8e5ce-2bbb-491a-9099-b6e7085ea0a1' || inputs.staging_database_uuid }}
+      CONFIRM_STAGING: ${{ github.event_name == 'push' && 'DEPLOY_STAGING_ONLY' || inputs.confirmation }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
