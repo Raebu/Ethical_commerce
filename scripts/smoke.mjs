@@ -85,6 +85,7 @@ try{
  assert.equal((await call('/api/commerce/stores/'+storeId+'/purchase-orders',{token:otherCookie})).code,403);
 
  assert.equal((await call('/api/commerce/assurance/verifiers',{token:cookie})).code,403);
+ assert.equal((await call('/api/commerce/admin/payment-incidents',{token:cookie})).code,403,'Non-admin sellers must never inspect payment recovery records');
 
  const unknownEmail='unknown-'+crypto.randomUUID()+'@example.test';
  for(let i=0;i<8;i++)assert.equal((await call('/api/auth/login',{method:'POST',body:{email:unknownEmail,password:'incorrectsecret'}})).code,401);
