@@ -119,7 +119,7 @@ export async function reconcileSessions(env:CommerceEnv):Promise<void>{
    }
    const session=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
    if(session.payment_status==='paid'){
-    await applyCompleted(env,{id:'reconcile-'+order.id,type:'checkout.session.completed',account:order.stripe_connected_account},session);
+    await applyCompleted(env,{id:'reconcile-'+order.id,type:'checkout.session.completed',livemode:env.RUNTIME_TIER==='production',account:order.stripe_connected_account},session);
    }else if(session.status==='expired'){
     await cancelUnpaid(env,order.id);
    }
