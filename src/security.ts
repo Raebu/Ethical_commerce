@@ -40,7 +40,7 @@ export async function createSession(req:Request,env:Env,userId:string):Promise<s
  return 'ec_session='+value+'; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'+(new URL(req.url).protocol==='https:'?'; Secure':'');
 }
 export async function session(req:Request,env:Env):Promise<SessionUser|null>{
- const token=req.headers.get('cookie')?.match(/(?:^|;\\s*)ec_session=([0-9a-f]{64})/)?.[1];
+ const token=req.headers.get('cookie')?.match(/(?:^|;\s*)ec_session=([0-9a-f]{64})/)?.[1];
  if(!token)return null;
  return env.DB.prepare('SELECT u.id,u.email,u.is_platform_admin FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(await digest(token),Date.now()).first<SessionUser>();
 }
