@@ -6,11 +6,40 @@ const price=(minor,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'curren
 const image=url=>{try{const u=new URL(url);return u.protocol==='https:'?u.href:''}catch{return ''}};
 const art=(url,alt='Product image')=>image(url)?'<img src="'+h(image(url))+'" alt="'+h(alt)+'" loading="lazy">':'<span aria-hidden="true">✳</span>';
 function flash(message){toast.textContent=message;toast.hidden=false;clearTimeout(flash.timer);flash.timer=setTimeout(()=>toast.hidden=true,5600)}
+function sellerFormFeedback(form,err){
+ // Keep the merchant's input intact and surface every actionable error.
+ const summary=form.querySelector('#seller-compliance-feedback');
+ form.querySelectorAll('[data-seller-field-error]').forEach(node=>node.remove());
+ form.querySelectorAll('[aria-invalid="true"]').forEach(el=>el.removeAttribute('aria-invalid'));
+ if(summary){summary.hidden=false;summary.textContent=err.message||'Unable to save seller disclosures';summary.dataset.result='error'}
+ const errors=err.fieldErrors&&typeof err.fieldErrors==='object'?err.fieldErrors:{};
+ let first=null;
+ for(const [name,message] of Object.entries(errors)){
+  const field=form.elements.namedItem(name);
+  if(!(field instanceof HTMLElement))continue;
+  first=first||field;
+  field.setAttribute('aria-invalid','true');
+  const hint=document.createElement('span');
+  hint.className='seller-field-error';
+  hint.dataset.sellerFieldError='true';
+  hint.setAttribute('role','alert');
+  hint.textContent=String(message);
+  (field.closest('label')||field.parentElement)?.append(hint);
+ }
+ if(first){first.focus({preventScroll:false})}
+ else if(summary){summary.focus()}
+}
+function emailVerificationFeedback(message,kind='info'){
+ const target=document.querySelector('#email-verification-feedback');
+ if(target){target.hidden=false;target.dataset.result=kind;target.textContent=message;target.focus({preventScroll:false})}
+ else flash(message);
+}
+
 async function api(path,options={}){
  const res=await fetch(path,{credentials:'same-origin',headers:{'accept':'application/json',...(options.body?{'content-type':'application/json'}:{})},...options});
  const contentType=res.headers.get('content-type')||'';
  const data=contentType.includes('application/json')?await res.json():null;
- if(!res.ok)throw new Error(data?.error||'Request failed');
+ if(!res.ok){const err=new Error(data?.error||'Request failed');if(data?.fieldErrors&&typeof data.fieldErrors==='object')err.fieldErrors=data.fieldErrors;throw err;}
  return data;
 }
 const post=(path,body,method='POST')=>api(path,{method,body:JSON.stringify(body)});
@@ -132,7 +161,7 @@ async function merchantCompliance(work){
   api('/api/commerce/stores/'+state.storeId+'/connect-status')
  ]);
  const c=details.compliance||{};
- const verify=email.verified?'<span class="badge">Email verified</span>':'<div class="notice">Email verification is required for verified seller onboarding. '+(email.serviceConfigured?'Use the button below to request a verification message.':'Transactional email is not configured yet.')+'</div><button class="btn btn-soft" data-op="send-verification">Email me a verification link</button>';
+ const verify=email.verified?'<span class="badge">Email verified</span>':'<div class="notice">Email verification is required before Stripe seller onboarding. '+(email.serviceConfigured?'We will send the link to your signed-in account email, not the public customer-support address.':'Email sending has not been configured for this staging Worker yet. An operator must configure RESEND_API_KEY and EMAIL_FROM for ethical-commerce-staging in Cloudflare before verification can be sent.')+'</div><button type="button" class="btn btn-soft" data-op="send-verification" '+(email.serviceConfigured?'':'disabled aria-disabled="true"')+'>'+(email.serviceConfigured?'Email me a verification link':'Email verification unavailable')+'</button><p id="email-verification-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></p>';
  const compliance='<form class="form" data-action="seller-compliance"><div class="form-grid">'+
   input('legalSellerName','Legal seller name',c.legal_seller_name||'','text','required minlength="3"')+
   input('contactEmail','Public customer support email',c.contact_email||'','email','required')+
@@ -143,7 +172,7 @@ async function merchantCompliance(work){
   input('termsUrl','Public terms URL',c.terms_url||'','url','required')+
   input('privacyUrl','Public privacy URL',c.privacy_url||'','url','required')+
   '<div class="full">'+field('cancellationNotice','Statutory cancellation rights and exceptions',c.cancellation_notice||'',4)+'</div>'+
-  '<label class="full"><input type="checkbox" name="acceptConsumerDuties" value="yes" required> I confirm these details are truthful and I accept applicable consumer protection, returns, privacy and product-safety duties.</label></div><button class="btn btn-dark">Save seller disclosures</button></form>';
+  '<label class="full"><input type="checkbox" name="acceptConsumerDuties" value="yes" required> I confirm these details are truthful and I accept applicable consumer protection, returns, privacy and product-safety duties.</label></div><p class="small muted">Policy links must begin with https:// and point to your actual published policies. The cancellation description must be at least 30 characters. Company registration is optional where not applicable.</p><div id="seller-compliance-feedback" class="inline-feedback" role="status" tabindex="-1" aria-live="polite" hidden></div><button class="btn btn-dark">Save seller disclosures</button></form>';
  const status=connect.connected?'<span class="badge">'+(connect.chargesEnabled&&connect.payoutsEnabled?'Stripe charges and payouts enabled':'Stripe onboarding incomplete')+'</span>':'<span class="badge warn">No connected Stripe account</span>';
  work.innerHTML=panel('Account verification',verify+'<p class="small muted">Email verification is not proof of company identity. Stripe performs financial identity checks separately.</p>')+
  panel('Seller identity and legal disclosures',compliance)+
@@ -287,7 +316,15 @@ document.addEventListener('click',async e=>{
  if(op){
   if(op.dataset.op==='toggle-auth'){state.authMode=state.authMode==='register'?'login':'register';auth()}
   if(op.dataset.op==='cancel-edit'){state.editProduct=null;await dashboard()}
-  if(op.dataset.op==='send-verification'){try{await post('/api/auth/email/request',{});flash('Verification email sent. Check your inbox.')}catch(ex){flash(ex.message)}}
+  if(op.dataset.op==='send-verification'){
+   op.disabled=true;
+   emailVerificationFeedback('Requesting your email verification link…');
+   try{
+    const result=await post('/api/auth/email/request',{});
+    emailVerificationFeedback(result.sent?'Verification email accepted by our provider. Check the inbox and spam folder of your signed-in account. The link expires in 20 minutes.':'Your email is already verified.','success');
+   }catch(ex){emailVerificationFeedback(ex.message||'Unable to request the verification email.','error')}
+   finally{op.disabled=false}
+  }
   if(op.dataset.op==='stripe-onboard'){try{const d=await post('/api/commerce/stores/'+state.storeId+'/onboarding',{});if(d.onboardingUrl)location.href=d.onboardingUrl}catch(ex){flash(ex.message)}}
   if(op.dataset.op==='pause-sales'){try{await post('/api/commerce/stores/'+state.storeId+'/pause',{paused:true});flash('Store sales paused')}catch(ex){flash(ex.message)}}
   if(op.dataset.op==='logout'){try{await post('/api/auth/logout',{});state.user=null;state.stores=[];navigate('/dashboard')}catch(ex){flash(ex.message)}}
@@ -349,9 +386,14 @@ document.addEventListener('submit',async e=>{
    return;
   }
   if(act==='seller-compliance'){
-   await post('/api/commerce/stores/'+state.storeId+'/compliance',{
-    ...data,acceptConsumerDuties:data.acceptConsumerDuties==='yes'
-   });flash('Seller disclosures saved');await dashboard();return
+   try{
+    await post('/api/commerce/stores/'+state.storeId+'/compliance',{
+     ...data,acceptConsumerDuties:data.acceptConsumerDuties==='yes'
+    });
+    flash('Seller disclosures saved successfully');
+    await dashboard();
+   }catch(ex){sellerFormFeedback(f,ex)}
+   return;
   }
   if(act==='fulfillment'){
    await post('/api/commerce/fulfillment/'+data.id,data);flash('Fulfilment updated');await dashboard();return
