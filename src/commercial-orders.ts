@@ -3,6 +3,7 @@ import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
 import {cancelUnpaid,reserveStockStatements} from './inventory';
 import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications';
+import {paymentIncident} from './payment-recovery';
 
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(!liveCheckoutConfigured(env))
@@ -44,6 +45,7 @@ export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
   ...reserveStockStatements(env,orderId,products)
  ];
  try{await env.DB.batch(batch)}catch{return error('A product was sold or changed while preparing checkout; refresh your cart',409)}
+ let providerSessionCreated=false;
  try{
   const returnBase=new URL('/order-result',req.url);
   returnBase.searchParams.set('order',orderId);
@@ -69,12 +71,17 @@ export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
   });
   const res=await stripe(env,'checkout/sessions',{method:'POST',account:store.stripe_account_id,idempotency:'ec-checkout-'+orderId,body:form(data)});
   if(!res.id||!/^https:\/\/checkout\.stripe\.com\//.test(res.url||''))throw Error('Stripe did not return a valid Checkout Session');
+  providerSessionCreated=true;
   await env.DB.prepare('UPDATE orders SET stripe_session_id=? WHERE id=?').bind(res.id,orderId).run();
   return json({orderId,checkoutUrl:res.url,customerToken:token,expiresAt,notice:'Payment is processed by the verified seller through Stripe Connect'},201);
  }catch(err){
-  await cancelUnpaid(env,orderId);
-  console.error('Stripe checkout could not be prepared',err);
-  return error('Payment checkout could not be started. Reserved stock has been released.',503);
+  // A timed-out Stripe API request may already have created a payable session.
+  // Never blindly release stock: a delayed paid webhook could otherwise lead
+  // to an accepted charge for inventory sold to somebody else.
+  try{await paymentIncident(env,orderId,providerSessionCreated?'checkout_persistence_failed':'unknown_checkout_result')}
+  catch(recordingError){console.error('Checkout incident could not be recorded',recordingError)}
+  console.error('Checkout session setup uncertain; reserved stock retained for operator review',orderId,err);
+  return error('We could not confirm checkout. Please do not retry this payment until the seller has confirmed its status.',503);
  }
 }
 
