@@ -1,9 +1,9 @@
-import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils';
-import {json,error,readBody,digest} from './security';
-import {throttle} from './abuse';
-import {cancelUnpaid,reserveStockStatements} from './inventory';
-import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications';
-import {paymentIncident} from './payment-recovery';
+import {CommerceEnv,needLogin,isResponse,member,owner,stripe,form,amount,strongToken,cleanId,safeEmail,textField,requireHttps,liveCheckoutConfigured} from './commercial-utils.ts';
+import {json,error,readBody,digest} from './security.ts';
+import {throttle} from './abuse.ts';
+import {cancelUnpaid,reserveStockStatements} from './inventory.ts';
+import {queueTrackingNotification,queueConsumerRequestNotification} from './notifications.ts';
+import {paymentIncident} from './payment-recovery.ts';
 
 export async function checkout(req:Request,env:CommerceEnv):Promise<Response>{
  if(!liveCheckoutConfigured(env))
