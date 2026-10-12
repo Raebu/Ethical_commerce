@@ -18,21 +18,68 @@ export async function readBody(req:Request):Promise<Record<string,unknown>>{
  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('JSON object required');
  return data as Record<string,unknown>;
 }
+// The Cloudflare production WebCrypto implementation caps an individual PBKDF2
+// deriveBits invocation at 100,000 iterations. Using 210,000 in one call worked
+// in local development but caused every deployed registration to return HTTP 500.
+// We therefore use three independent, domain-separated 100,000-round passes.
+// This is a versioned format; it is NOT identical to PBKDF2(300000) and must
+// never be silently reinterpreted as one. Longer term use audited managed
+// authentication/Argon2id for a public production launch.
+const PASSWORD_PBKDF2_ROUNDS=3;
+const PASSWORD_PBKDF2_ITERATIONS=100000;
+const PASSWORD_HASH_TAG='pbkdf2-chain-v1';
+
+async function derivePasswordChain(value:string,salt:Uint8Array):Promise<string>{
+ let material:Uint8Array=new TextEncoder().encode(value);
+ for(let round=1;round<=PASSWORD_PBKDF2_ROUNDS;round++){
+  const key=await crypto.subtle.importKey('raw',material,'PBKDF2',false,['deriveBits']);
+  const roundSalt=new Uint8Array(salt.byteLength+1);
+  roundSalt.set(salt);
+  roundSalt[salt.byteLength]=round;
+  material=new Uint8Array(await crypto.subtle.deriveBits({
+   name:'PBKDF2',hash:'SHA-256',salt:roundSalt,iterations:PASSWORD_PBKDF2_ITERATIONS
+  },key,256));
+ }
+ return toHex(material);
+}
+
+function compareHexConstantTime(a:string,b:string):boolean{
+ if(a.length!==b.length)return false;
+ let diff=0;
+ for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+ return diff===0;
+}
+
 export async function passwordHash(value:string):Promise<string>{
  const salt=crypto.getRandomValues(new Uint8Array(16));
- const secret=await crypto.subtle.importKey('raw',utf8.encode(value),'PBKDF2',false,['deriveBits']);
- const derived=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:210000},secret,256);
- return ['pbkdf2','210000',toHex(salt),toHex(new Uint8Array(derived))].join('$');
+ const result=await derivePasswordChain(value,salt);
+ return [PASSWORD_HASH_TAG,'100000x3',toHex(salt),result].join('$');
 }
+
 export async function verifyPassword(value:string,encoded:string):Promise<boolean>{
- const [alg,iterations,salt,expected]=encoded.split('$');
- if(alg!=='pbkdf2'||iterations!=='210000'||!salt||!expected)return false;
- const key=await crypto.subtle.importKey('raw',utf8.encode(value),'PBKDF2',false,['deriveBits']);
+ const [alg,iterations,salt,expected,...excess]=encoded.split('$');
+ if(excess.length||!salt||!/^[a-f0-9]{32}$/i.test(salt||'')||!/^[a-f0-9]{64}$/i.test(expected||''))return false;
  const saltBytes=Uint8Array.from(salt.match(/../g)??[],s=>parseInt(s,16));
- const result=toHex(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:saltBytes,iterations:210000},key,256)));
- if(result.length!==expected.length)return false;
- let diff=0;for(let i=0;i<result.length;i++)diff|=result.charCodeAt(i)^expected.charCodeAt(i);
- return diff===0;
+ if(alg===PASSWORD_HASH_TAG&&iterations==='100000x3'){
+  const derived=await derivePasswordChain(value,saltBytes);
+  return compareHexConstantTime(derived,expected);
+ }
+ // Compatibility with hashes created in development prior to the migration.
+ // A 210,000-iteration legacy hash is unsupported by deployed Workers; do not
+ // reduce its verification cost or treat it as the new format.
+ if(alg==='pbkdf2'&&iterations==='210000'){
+  try{
+   const key=await crypto.subtle.importKey('raw',utf8.encode(value),'PBKDF2',false,['deriveBits']);
+   const derived=toHex(new Uint8Array(await crypto.subtle.deriveBits({
+    name:'PBKDF2',hash:'SHA-256',salt:saltBytes,iterations:210000
+   },key,256)));
+   return compareHexConstantTime(derived,expected);
+  }catch(e){
+   if(e instanceof DOMException&&e.name==='NotSupportedError')return false;
+   throw e;
+  }
+ }
+ return false;
 }
 export async function createSession(req:Request,env:Env,userId:string):Promise<string>{
  const bytes=crypto.getRandomValues(new Uint8Array(32));const value=toHex(bytes);
