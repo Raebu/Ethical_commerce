@@ -1,4 +1,4 @@
-import {CommerceEnv,authenticate,needLogin,isResponse,member,owner,sendEmail,safeEmail,textField,requireHttps,strongToken,stripe,form,htmlSafe} from './commercial-utils';
+import {CommerceEnv,authenticate,needLogin,isResponse,member,owner,sendEmail,safeEmail,textField,requireHttps,strongToken,stripe,form,htmlSafe,liveCheckoutConfigured} from './commercial-utils';
 import {json,error,readBody,digest} from './security';
 import {throttle} from './abuse';
 const base='/api/commerce';
@@ -111,7 +111,7 @@ export async function identityRoutes(req:Request,env:CommerceEnv):Promise<Respon
  if(action==='pause'&&method==='POST'){
   const b=await readBody(req);if(typeof b.paused!=='boolean')return error('paused must be boolean');
   if(!b.paused){
-   if(env.SALES_ENABLED!=='true')return error('Platform sales remain disabled until operator approval',503);
+   if(!liveCheckoutConfigured(env))return error('Platform sales remain disabled until approved payments, webhook, tax and customer messaging are configured',503);
    const c=await env.DB.prepare('SELECT stripe_charges_enabled,stripe_payouts_enabled,consumer_terms_accepted_at FROM merchant_compliance WHERE store_id=?').bind(storeId).first<any>();
    const u=await env.DB.prepare('SELECT email_verified_at FROM users WHERE id=?').bind(user.id).first<any>();
    if(!c?.stripe_charges_enabled||!c?.stripe_payouts_enabled||!c?.consumer_terms_accepted_at||!u?.email_verified_at)
