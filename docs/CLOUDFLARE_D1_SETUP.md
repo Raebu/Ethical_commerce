@@ -1,4 +1,8 @@
-# Resolve Cloudflare D1 binding error 10021
+# Cloudflare D1 setup and migration
+
+**Resolved on 12 October 2026:** The provisioned Cloudflare database is named `ethicalcommerce`; database UUID `5070811a-9990-4ae3-bd72-cf394ee63be6` is configured in `wrangler.toml` on `main`. The original invalid-binding deploy error should no longer occur after Cloudflare rebuilds from latest `main`.
+
+**Still required:** The screenshot shows **zero database tables**, so run the schema migration against the remote D1 database before any merchant signup or catalogue API use. This initial migration is not applied by the `npx wrangler deploy` command.
 
 A Cloudflare Worker deploy will fail with `binding DB of type d1 must have a valid database_id specified [code: 10021]` until `wrangler.toml` references a real D1 database UUID in the **same Cloudflare account** as the Worker.
 
@@ -8,8 +12,8 @@ A Cloudflare Worker deploy will fail with `binding DB of type d1 must have a val
 
 1. Open [Cloudflare dashboard](https://dash.cloudflare.com/) and select the account that owns the `ethical-commerce` Worker.
 2. Go to **Storage & databases → D1 SQL database** (menu wording may vary).
-3. If a database named `ethical-commerce` exists, open it and copy its **Database ID**. Otherwise choose **Create database**, name it `ethical-commerce`, and copy the newly created database ID.
-4. In GitHub, open `wrangler.toml` and replace `REPLACE_WITH_D1_DATABASE_ID` with the copied UUID. Preserve `binding = "DB"` and `database_name = "ethical-commerce"`.
+3. The database already exists as `ethicalcommerce`; there is no need to create another one.
+4. GitHub `wrangler.toml` already contains the correct UUID and `database_name = "ethicalcommerce"`. No further database ID changes are necessary.
 5. Commit to `main` to trigger the connected Cloudflare deployment.
 6. **Before opening registrations**, initialise the production tables using the remote database migration (see below). A deployed Worker with an empty D1 database can still return 500 responses.
 
@@ -21,17 +25,11 @@ If the DB already exists:
 npx wrangler d1 list --json
 ```
 
-If not, create it:
-
-```sh
-npx wrangler d1 create ethical-commerce
-```
-
-Use the returned database UUID in `wrangler.toml`, then run:
+The database is already provisioned. From a checked-out copy of the repository in a Cloudflare-authenticated terminal, run:
 
 ```sh
 npm install
-npx wrangler d1 migrations apply ethical-commerce --remote
+npx wrangler d1 migrations apply ethicalcommerce --remote
 npx wrangler deploy
 ```
 
@@ -39,12 +37,12 @@ Migration `0001_initial.sql` establishes the actual tables required by the API.
 
 ## Cloudflare Workers Builds and migrations
 
-The default Cloudflare build token is generally for Worker deployment and does **not necessarily** include permission to create or edit D1 databases. If `d1 migrations apply --remote` returns a permission error, run it once locally with a Cloudflare-authenticated account that has D1 edit permissions. Do not place a personal/global API key in the repo.
+The Cloudflare Workers build token can deploy a Worker with a D1 binding but may **not** have permission to execute D1 migrations. This is separate from its ability to bind the database. If `d1 migrations apply --remote` returns a permission error, run it once locally with a Cloudflare-authenticated account that has D1 edit permissions. Do not place a personal/global API key in the repo.
 
 Once it has D1 permissions, you may configure the Workers Builds **Deploy command** as:
 
 ```sh
-npx wrangler d1 migrations apply ethical-commerce --remote && npx wrangler deploy
+npx wrangler d1 migrations apply ethicalcommerce --remote && npx wrangler deploy
 ```
 
 Only enable this if the token has the necessary permissions and backups / migration review are handled.
