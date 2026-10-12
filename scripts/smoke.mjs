@@ -22,7 +22,21 @@ try{
  const cookie=owner.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie);
  const s=await call('/api/stores',{method:'POST',token:cookie,body:{name:'Ethical Store',slug:'smoke-'+crypto.randomUUID().slice(0,8)}});
  assert.equal(s.code,201,JSON.stringify(s.data));const storeId=s.data.id;
- const unverified=await call('/api/auth/email/status',{token:cookie});assert.equal(unverified.code,200);assert.equal(unverified.data.verified,false);
+ const unverified=await call('/api/auth/email/status',{token:cookie});
+ assert.equal(unverified.code,200);assert.equal(unverified.data.verified,false);
+ assert.equal(unverified.data.email,owner.data.user.email);
+ assert.equal(unverified.data.pending,false);
+ assert.equal(unverified.data.pendingEmail,null);
+ // A user may enter an address to verify; it must be valid, and missing email
+ // service credentials must never create a misleading "check your email" state.
+ const badEmail=await call('/api/auth/email/request',{method:'POST',token:cookie,body:{email:'not-an-email'}});
+ assert.equal(badEmail.code,400);
+ const missingService=await call('/api/auth/email/request',{method:'POST',token:cookie,body:{email:'new-owner@example.test'}});
+ assert.equal(missingService.code,503);
+ const unchanged=await call('/api/auth/email/status',{token:cookie});
+ assert.equal(unchanged.data.pending,false);
+ assert.equal(unchanged.data.email,owner.data.user.email);
+ assert.equal(unchanged.data.verified,false);
  assert.equal((await call('/api/auth/email/request',{method:'POST',token:cookie,body:{}})).code,503);
  const badCompliance=await call('/api/commerce/stores/'+storeId+'/compliance',{method:'POST',token:cookie,body:{
   legalSellerName:'X',tradingAddress:'Short',contactEmail:'not-an-email',
