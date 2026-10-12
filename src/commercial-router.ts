@@ -6,6 +6,7 @@ import {reviewRoutes,expireAssessments} from './commercial-assurance';
 import {stripeWebhook,reconcileSessions} from './commercial-webhooks';
 import {purchaseOrderRoutes} from './purchase-orders';
 import {processNotifications,queuePaidNotifications} from './notifications';
+import {paymentRecoveryRoutes} from './payment-recovery';
 
 export async function commerceRoutes(req:Request,env:CommerceEnv):Promise<Response|null>{
  const path=new URL(req.url).pathname;
@@ -15,6 +16,7 @@ export async function commerceRoutes(req:Request,env:CommerceEnv):Promise<Respon
   ||await orderRoutes(req,env)
   ||await channelRoutes(req,env)
   ||await purchaseOrderRoutes(req,env)
+  ||await paymentRecoveryRoutes(req,env)
   ||await reviewRoutes(req,env);
 }
 export async function scheduledCommerce(env:CommerceEnv):Promise<void>{

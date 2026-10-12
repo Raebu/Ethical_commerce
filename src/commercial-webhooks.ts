@@ -1,17 +1,50 @@
-import {CommerceEnv,stripe,stripeSignatureValid} from './commercial-utils';
-import {json,error} from './security';
-import {cancelUnpaid} from './inventory';
-import {queuePaidNotifications,queueRefundNotification} from './notifications';
+import type {CommerceEnv} from './commercial-utils.ts';
+import {stripe,stripeSignatureValid} from './commercial-utils.ts';
+import {json,error} from './security.ts';
+import {cancelUnpaid} from './inventory.ts';
+import {queuePaidNotifications,queueRefundNotification} from './notifications.ts';
+import {paymentIncident} from './payment-recovery.ts';
 type StripeEvent={id:string;type:string;account?:string;data?:{object?:any}};
 async function applyCompleted(env:CommerceEnv,event:StripeEvent,session:any):Promise<void>{
  const orderId=session?.metadata?.order_id||session?.client_reference_id,storeId=session?.metadata?.store_id;
  if(!/^[a-f0-9-]{36}$/.test(orderId||''))return;
  const order=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(orderId).first<any>();
- if(!order||order.status!=='pending_payment')return;
- if(order.store_id!==storeId||!event.account||event.account!==order.stripe_connected_account
-   ||!order.stripe_session_id||order.stripe_session_id!==session.id
-   ||session.payment_status!=='paid'||session.currency?.toLowerCase()!=='gbp'
-   ||session.amount_subtotal!==order.subtotal_minor)return;
+ if(!order)return;
+ if(!event.account||order.store_id!==storeId||event.account!==order.stripe_connected_account)return;
+ if(session.payment_status!=='paid'||session.currency?.toLowerCase()!=='gbp'
+   ||session.amount_subtotal!==order.subtotal_minor){
+  await paymentIncident(env,order.id,'session_mismatch',event.id);
+  return;
+ }
+ if(order.status==='cancelled'){
+  await paymentIncident(env,order.id,'late_paid_after_cancel',event.id);
+  return; // Never fulfil a payment against released stock.
+ }
+ if(order.status!=='pending_payment')return;
+ if(order.reservation_released){
+  await paymentIncident(env,order.id,'late_paid_after_cancel',event.id);
+  return;
+ }
+ if(!order.stripe_session_id){
+  const recovery=await env.DB.prepare(`SELECT 1 FROM payment_incidents
+   WHERE order_id=? AND reason IN ('unknown_checkout_result','checkout_persistence_failed','missing_session_after_timeout')
+   LIMIT 1`).bind(order.id).first();
+  if(!recovery){
+   await paymentIncident(env,order.id,'session_mismatch',event.id);
+   return;
+  }
+  // Stripe signed this connected-account payment, with an exact merchant, item
+  // subtotal, session id, and order metadata match; repair the lost session ID.
+  if(!/^cs_(test_|live_)[A-Za-z0-9_]+$/.test(session.id||'')){
+   await paymentIncident(env,order.id,'session_mismatch',event.id);
+   return;
+  }
+  await env.DB.prepare(`UPDATE orders SET stripe_session_id=? WHERE id=? AND
+   stripe_session_id IS NULL AND status='pending_payment'`).bind(session.id,order.id).run();
+ }else if(order.stripe_session_id!==session.id){
+  await paymentIncident(env,order.id,'session_mismatch',event.id);
+  return;
+ }
  const email=String(session.customer_details?.email||'').trim().toLowerCase().slice(0,254);
  await env.DB.batch([
   env.DB.prepare("UPDATE orders SET status='paid',stripe_payment_intent_id=?,customer_email=?,updated_at=datetime('now') WHERE id=? AND status='pending_payment'")
@@ -74,7 +107,9 @@ export async function reconcileSessions(env:CommerceEnv):Promise<void>{
  for(const order of old.results||[]){
   try{
    if(!order.stripe_session_id){
-    await cancelUnpaid(env,order.id);
+    // No confirmed Stripe session: API timeouts are ambiguous. Hold the
+    // reservation and escalate rather than make an unsafe saleable stock credit.
+    await paymentIncident(env,order.id,'missing_session_after_timeout');
     continue;
    }
    const session=await stripe(env,'checkout/sessions/'+encodeURIComponent(order.stripe_session_id),{account:order.stripe_connected_account});
