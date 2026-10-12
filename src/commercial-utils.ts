@@ -1,4 +1,5 @@
-import {Env,SessionUser,digest,error,json,session} from './security';
+import type {Env,SessionUser} from './security.ts';
+import {digest,error,json,session} from './security.ts';
 
 export interface CommerceEnv extends Env {
  RESEND_API_KEY?:string;
