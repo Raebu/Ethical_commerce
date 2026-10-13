@@ -20,3 +20,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy seller-first ethical dropshipping homepage (PR #23) to isolated staging only. No payment/sales/notifications/publishing flags changed.
 
 2026-10-13: Deploy black, electric-lime Ethical Commerce public homepage and ethical-rewards vision PR #24 to isolated staging only. Cash rewards and all payment/sales/notifications/publishing flags remain disabled.
+
+2026-10-13: Deploy PR #25 one-screen black Ethical Commerce homepage, fixed bottom navigation and ethical zoom overlay dialogs to isolated staging. Keep sales, checkout, notifications, publishing disabled.
