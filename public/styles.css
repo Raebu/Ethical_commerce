@@ -255,14 +255,14 @@ body:has(.home-shell) .home-cta-panel .btn-light:hover{background:#29381d;color:
 
 /* Ethical Commerce kiosk home: one visual screen, bottom navigation, immersive views. */
 html:has(.home-shell){overflow:hidden}
-body:has(.home-shell){height:100dvh;overflow:hidden}
-body:has(.home-shell) .site-footer{display:none}
-body:has(.home-shell) .site-header{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:15;border-top:1px solid #272a26;border-bottom:0;background:#000}
-body:has(.home-shell) .header-inner{min-height:64px}
-body:has(.home-shell) .header-inner .logo{width:32px;height:32px;border-radius:9px;font-size:1.32rem}
-body:has(.home-shell) .header-inner .brand{font-size:1.05rem}
-body:has(.home-shell) .header-inner .brand small{display:none}
-body:has(.home-shell) #main{height:calc(100dvh - 66px);overflow:hidden}
+body:has(.home-shell){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+body:has(.home-shell) .site-footer{display:block;flex:0 0 auto;background:#000;border-top:1px solid #262626;color:#bec7ba}
+body:has(.home-shell) .site-header{position:relative;top:0;bottom:auto;left:auto;right:auto;flex:0 0 auto;z-index:15;border-top:0;border-bottom:1px solid #272a26;background:#000}
+body:has(.home-shell) .header-inner{min-height:68px}
+body:has(.home-shell) .header-inner .logo{width:43px;height:43px;border-radius:13px;font-size:1.7rem}
+body:has(.home-shell) .header-inner .brand{font-size:1.27rem}
+body:has(.home-shell) .header-inner .brand small{display:block}
+body:has(.home-shell) #main{height:auto;flex:1 1 auto;min-height:0;overflow:hidden}
 body:has(.home-shell) .home-shell{height:100%;max-width:1300px}
 body:has(.home-shell) .home-hero{min-height:100%;height:100%;padding:12px 0;align-items:center;gap:clamp(20px,3vw,54px);grid-template-columns:minmax(0,1.03fr) minmax(0,.97fr)}
 body:has(.home-shell) .home-hero h1{font-size:clamp(2.65rem,5.15vw,6.4rem);margin-bottom:clamp(11px,2vh,21px)}
@@ -316,7 +316,7 @@ body.ec-overlay-active{overflow:hidden!important}
  body:has(.home-shell) .home-hero{padding:6px 0}
 }
 @media(max-width:800px){
- body:has(.home-shell) #main{height:calc(100dvh - 62px)}
+ body:has(.home-shell) #main{height:auto;min-height:0;overflow-y:auto}
  body:has(.home-shell) .home-hero{grid-template-columns:1fr;gap:8px;align-content:center;justify-content:center}
  body:has(.home-shell) .home-hero h1{font-size:clamp(2.7rem,9vw,4.4rem);margin-bottom:11px}
  body:has(.home-shell) .home-kicker{margin-bottom:9px}
@@ -327,7 +327,7 @@ body.ec-overlay-active{overflow:hidden!important}
  body:has(.home-shell) .ec-home-openers button{background:#121512;border:1px solid #3d4937;color:#d3ff5c;border-radius:9px;padding:11px;font-size:.68rem;font-weight:800;letter-spacing:.025em}
  body:has(.home-shell) .header-inner nav{gap:13px}
  body:has(.home-shell) .header-inner nav a{font-size:.73rem}
- body:has(.home-shell) .header-inner{min-height:61px}
+ body:has(.home-shell) .header-inner{min-height:64px}
  .ec-overlay-host{transform-origin:38% 40%}
  .ec-overlay-top{height:61px}
  .ec-overlay-panel .home-step-grid,.ec-overlay-panel .home-difference{grid-template-columns:1fr}
@@ -356,3 +356,36 @@ body.ec-overlay-active{overflow:hidden!important}
 @media(prefers-reduced-motion:reduce){
  .ec-overlay-host,.ec-overlay-host.is-open,.ec-overlay-display,.ec-overlay-host.is-open .ec-overlay-display{transition:none;transform:none}
 }
+
+/* Restore original top masthead; compact functional footer replaces the discarded long page. */
+body:has(.home-shell) .site-footer .footer-grid,
+body:has(.home-shell) .site-footer .footnote{display:none}
+body:has(.home-shell) .site-footer .home-mini-footer{display:flex;min-height:48px;align-items:center;justify-content:space-between;gap:16px;padding:9px 0}
+body:has(.home-shell) .home-mini-footer .home-footer-message{font-size:.73rem;line-height:1.45;color:#a6b2a4}
+body:has(.home-shell) .home-mini-footer .home-footer-message strong{color:#d3ff5c}
+body:has(.home-shell) .home-mini-footer nav{display:flex;align-items:center;justify-content:flex-end;gap:18px}
+body:has(.home-shell) .home-mini-footer nav a{font-size:.73rem;font-weight:800;color:#d3ff5c;text-decoration:none;white-space:nowrap}
+body:has(.home-shell) .home-mini-footer nav a:hover{text-decoration:underline}
+body:not(:has(.home-shell)) .home-mini-footer{display:none}
+body:has(.home-shell) .site-header{visibility:visible}
+@media (max-width:800px){
+ body:has(.home-shell) #main{overflow-y:auto}
+ body:has(.home-shell) .home-shell{height:auto;min-height:100%}
+ body:has(.home-shell) .home-hero{height:auto;min-height:100%;padding:24px 0}
+}
+@media (max-width:530px){
+ body:has(.home-shell) .site-footer .home-mini-footer{flex-direction:column;gap:4px;padding:8px 0;text-align:center}
+ body:has(.home-shell) .home-mini-footer nav{justify-content:center;gap:13px;flex-wrap:wrap}
+ body:has(.home-shell) .home-mini-footer nav a{font-size:.67rem}
+ body:has(.home-shell) .home-mini-footer .home-footer-message{font-size:.67rem}
+ body:has(.home-shell) .header-inner .logo{width:34px;height:34px;font-size:1.3rem}
+ body:has(.home-shell) .header-inner .brand{font-size:1rem}
+ body:has(.home-shell) .header-inner .brand small{font-size:.52rem}
+}
+@media(max-height:760px) and (min-width:801px){
+ body:has(.home-shell) #main{overflow-y:auto}
+ body:has(.home-shell) .home-shell{height:auto;min-height:100%}
+ body:has(.home-shell) .home-hero{height:auto;min-height:100%;padding:20px 0}
+}
+/* Overlays retain scroll internally while the background hero stays fixed. */
+body.ec-overlay-active #main{overflow:hidden!important}
