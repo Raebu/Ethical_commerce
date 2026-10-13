@@ -396,12 +396,15 @@ async function openEthicalOverlay(name,trigger){
   {transform:at(startLeft*.72+finalX*.28,startTop*.72+finalY*.28,1+(endScale-1)*.28),opacity:1,offset:.45},
   {transform:at(startLeft*.25+finalX*.75,startTop*.25+finalY*.75,1+(endScale-1)*.75),opacity:1,offset:.78},
   {transform:at(finalX,finalY,endScale),opacity:0,offset:1}
- ],{duration:2400,easing:'ease-in-out',fill:'forwards'});
+ ],{duration:2700,easing:'ease-in-out',fill:'forwards'});
  const run={word,curtain,animation,revealTimer:null,cancelled:false};
  ethicalZoomRun=run;
  run.revealTimer=setTimeout(()=>{
-  if(ethicalZoomRun===run&&!run.cancelled)finish();
- },1700);
+  if(ethicalZoomRun===run&&!run.cancelled){
+   finish();
+   curtain.classList.add('is-revealing');
+  }
+ },1850);
  if(name==='products')await loadCatalog('');
  try{await animation.finished}catch{}
  if(ethicalZoomRun!==run||run.cancelled)return;
