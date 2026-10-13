@@ -427,7 +427,8 @@ function playEthicalTextMask(host,panel,name){
   if(p>=1){finish();return}
   run.frameId=requestAnimationFrame(frame);
  }
- run.frameId=requestAnimationFrame(frame);
+ // Paint the first masked frame synchronously so no unmasked content flashes.
+ frame(start);
  return true;
 }
 async function openEthicalOverlay(name,trigger){
