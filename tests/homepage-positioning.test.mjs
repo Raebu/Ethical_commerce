@@ -125,7 +125,40 @@ test('switching from a card replays the actual ETHICAL glyph-mask and seller sto
  assert.match(app,/playEthicalTextMask\(host,panel,name,trigger,\{origin\}\)/);
  assert.doesNotMatch(app,/if\(switching\|\|window\.matchMedia/,'nested navigation should no longer skip animation');
  assert.match(app,/async function navigateWithEthicalMask\(to,trigger\)/);
- assert.match(app,/await render\(\);\s*if\(!playEthicalTextMask\(null,null,'route',trigger/);
+ assert.match(app,/await render\(\);\s*if\(!playEthicalTextMask\(null,null,maskName,trigger/);
  assert.match(app,/ctx\.globalCompositeOperation='destination-out'/);
  assert.match(app,/document\.body\.append\(canvas\);\s*closeEthicalOverlay\(true\);/);
+});
+
+test('every animated destination has its own non-repeating readable word',()=>{
+ const match=app.match(/const ETHICAL_MASK_WORDS=Object\.freeze\((\{[\s\S]*?\})\);/);
+ assert.ok(match,'destination word registry missing');
+ const wordMap=JSON.parse(match[1].replace(/([a-z]+):'([A-Z]+)'/g,'"$1":"$2"'));
+ assert.deepEqual(Object.keys(wordMap).sort(),['about','dashboard','how','products','proof','rewards','sell'].sort());
+ assert.equal(new Set(Object.values(wordMap)).size,Object.values(wordMap).length,'words should never be reused between destinations');
+ assert.equal(wordMap.proof,'TRUST');
+ assert.equal(wordMap.rewards,'IMPACT');
+ assert.equal(wordMap.dashboard,'CREATE');
+ assert.equal(wordMap.products,'DISCOVER');
+ assert.match(app,/const word=ETHICAL_MASK_WORDS\[name\]/);
+ assert.doesNotMatch(app,/const word='ETHICAL'/);
+ assert.match(app,/const maskName=to\.slice\(1\)/);
+ assert.match(html,/data-ethical-route="sell"/);
+});
+
+test('black-lime design covers public and platform pages but never the shop',()=>{
+ assert.match(app,/document\.body\.dataset\.ecTheme=/);
+ assert.match(app,/pathname\.startsWith\('\/shop\/'\)/);
+ assert.match(app,/pathname\.startsWith\('\/product\/'\)/);
+ assert.match(app,/pathname==='\/order-result'/);
+ assert.match(app,/\?'shop':pathname==='\/'\?'home':'dark'/);
+ assert.match(css,/body\[data-ec-theme="dark"\]\{/);
+ assert.match(css,/body\[data-ec-theme="dark"\] \.site-header/);
+ assert.match(css,/body\[data-ec-theme="dark"\] \.sidebar button/);
+ assert.match(css,/body\[data-ec-theme="dark"\] :is\(\.input,select,textarea\)/);
+ assert.doesNotMatch(css,/body\[data-ec-theme="shop"\]/);
+ assert.match(app,/class="container ec-dark-landing seller-intro-page"/);
+ assert.match(app,/class="container ec-dark-landing ec-standard-page"/);
+ assert.match(app,/THE ETHICAL COMMERCE STANDARD/);
+ assert.match(app,/Live payments, automatic fulfilment and payment-split reporting are not enabled/);
 });

@@ -102,11 +102,34 @@ async function passport(productId){
  }catch(e){console.warn('Public seller disclosures unavailable',e)}
 }
 function landing(type){
- if(type==='sell')main.innerHTML="<div class=\"container seller-intro-page\"><section class=\"seller-intro-hero\"><span class=\"eyebrow\">Ethical dropshipping starts here</span><h1>Create your ethical dropshipping store. <span>Show every step.</span></h1><p>Give your customers a proper look behind the product: its origin, suppliers, evidence and missing links. Build towards money-flow transparency as those disclosures become available.</p><div class=\"home-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark\">Create your store <span aria-hidden=\"true\">→</span></a><a href=\"/\" data-link class=\"btn btn-light\">See how it works <span aria-hidden=\"true\">↗</span></a></div><p class=\"home-availability\">Foundational storefront, supplier and product-passport tools are in preview. Automated dropshipping, payment-split reporting and live payments are not active.</p></section><section class=\"section\"><div class=\"three-features\"><article class=\"feature\"><div class=\"symbol\" aria-hidden=\"true\">▦</div><h3>Launch your storefront</h3><p>Create a hosted store, manage product listings and publish accurate seller details.</p></article><article class=\"feature\"><div class=\"symbol\" aria-hidden=\"true\">◎</div><h3>Trace the supply chain</h3><p>Record source, manufacture, transport and retail steps, with supporting evidence and openly labelled gaps.</p></article><article class=\"feature\"><div class=\"symbol\" aria-hidden=\"true\">£</div><h3>Explain the money trail</h3><p>Supplier and payout transparency is a development priority. It is not presented as an active or independently verified feature.</p></article></div></section></div>";
- else main.innerHTML='<div class="container"><div class="page-head"><span class="eyebrow">Our public standard</span><h1>Trust should be earned,<br>not advertised.</h1><p>We separate declarations from checked evidence, expose supply-chain gaps, protect customers from deceptive selling and create space for repair and reuse.</p></div><article class="prose section"><h2>Independent evidence first</h2><p>A product cannot become ethically certified just because a seller uploads a PDF. Each claim is displayed with its current evidence status, and independent certification requires appropriate third-party assurance.</p><h2>Humans are not a carbon offset</h2><p>We never let favourable packaging or emissions estimates negate evidence of forced labour, worker exploitation or unsafe manufacturing. Serious complaints must be assessed and remedied.</p><h2>Privacy and fairness</h2><p>No invented customer reviews, fabricated scarcity, hidden paid rankings or fictional provenance. We minimise collected data and never advertise unverified information as fact.</p><h2>Our current limitations</h2><p>This is an early technology release. It is not an independently audited certification scheme. Secure worker reporting, independent inspections, product-safety verification, payment processing and marketplace API approvals are not yet live.</p><a href="/dashboard" class="btn btn-dark" data-link>Build a transparent store →</a></article></div>';
+ if(type==='sell'){
+  main.innerHTML='<div class="container ec-dark-landing seller-intro-page">'+
+   '<section class="ec-dark-hero" aria-labelledby="seller-page-title"><span class="ec-dark-kicker">YOUR STORE. YOUR SUPPLIERS. THE WHOLE STORY.</span>'+
+   '<h1 id="seller-page-title">BUILD A STORE. <span>PROVE THE DIFFERENCE.</span></h1>'+
+   '<p class="ec-dark-lead">Create your ethical dropshipping store, record supplier evidence and show customers what happens before a product reaches their door.</p>'+
+   '<div class="ec-dark-hero-actions"><a href="/dashboard" data-link class="btn btn-dark">Create your store ↗</a><a href="/" data-link class="btn btn-light">Explore the platform →</a></div>'+
+   '<p class="ec-dark-disclaimer">Early access: storefronts and traceability records are available in preview. Live payments, automatic fulfilment and payment-split reporting are not enabled.</p></section>'+
+   '<section class="ec-dark-tile-grid" aria-label="What you can build">'+
+   '<article class="ec-dark-tile"><span>01 / YOUR BRAND</span><h2>YOUR STOREFRONT.</h2><p>Set up a hosted shop and publish products with accurate customer information.</p></article>'+
+   '<article class="ec-dark-tile"><span>02 / YOUR EVIDENCE</span><h2>EVERY HANDOFF.</h2><p>Record sourcing, manufacture, transport and suppliers. Attach documents and display any gaps honestly.</p></article>'+
+   '<article class="ec-dark-tile"><span>03 / THE FUTURE</span><h2>FOLLOW THE MONEY.</h2><p>Work towards accurate supplier and payment-flow transparency. This reporting is in development.</p></article>'+
+   '</section></div>';
+  return;
+ }
+ main.innerHTML='<div class="container ec-dark-landing ec-standard-page">'+
+  '<section class="ec-dark-hero" aria-labelledby="standards-page-title"><span class="ec-dark-kicker">THE ETHICAL COMMERCE STANDARD</span>'+
+  '<h1 id="standards-page-title">DON\'T JUST CLAIM IT. <span>SHOW THE PROOF.</span></h1>'+
+  '<p class="ec-dark-lead">Trust isn\'t something a seller can buy or award themselves. Good claims need evidence; unanswered questions deserve to be visible.</p>'+
+  '<a href="/dashboard" data-link class="btn btn-dark">Build a transparent store ↗</a></section>'+
+  '<section class="ec-standard-grid" aria-label="The evidence standard">'+
+  '<article><span>01 / EVIDENCE</span><h2>DECLARATIONS ARE NOT CERTIFICATION.</h2><p>Uploading a document does not automatically prove an ethical claim. Each statement is displayed with its actual evidence status; independent certification requires suitable external assurance.</p></article>'+
+  '<article><span>02 / PEOPLE</span><h2>HUMANS ARE NOT OFFSETS.</h2><p>Favourable packaging or emissions figures cannot erase worker exploitation or unsafe manufacturing. Serious concerns must be investigated and addressed.</p></article>'+
+  '<article><span>03 / FAIRNESS</span><h2>NO FABRICATED TRUST.</h2><p>No invented reviews, misleading scarcity, hidden paid rankings or fictional provenance. Missing information is not dressed up as proof.</p></article>'+
+  '<article><span>04 / OUR STATUS</span><h2>HONEST ABOUT THE GAPS.</h2><p>This is early access, not an independently audited certification scheme. Independent inspections, live payments and marketplace publishing integrations are not yet operational.</p></article>'+
+  '</section></div>';
 }
 function auth(){
- main.innerHTML='<div class="container"><div class="auth-shell"><span class="eyebrow">Merchant access</span><h1>Seller Studio.</h1><p class="muted">Manage products, suppliers and the evidence behind every claim.</p><div class="panel"><form class="form" data-action="'+h(state.authMode)+'"><h2>'+ (state.authMode==='register'?'Create your account':'Welcome back')+'</h2><label>Email<input class="input" name="email" type="email" required autocomplete="email"></label><label>Password<input class="input" name="password" type="password" minlength="12" maxlength="128" required autocomplete="'+(state.authMode==='register'?'new-password':'current-password')+'"><span class="field-hint">12 characters minimum. This is a pre-launch test environment: email verification and seller identity checks are not operational. Do not enter sensitive customer data.</span></label><button class="btn btn-dark">'+(state.authMode==='register'?'Create account':'Sign in')+'</button><button class="btn btn-soft" type="button" data-op="toggle-auth">'+(state.authMode==='register'?'Already registered? Sign in':'Need an account? Register')+'</button></form></div></div></div>';
+ main.innerHTML='<div class="container"><div class="auth-shell"><span class="eyebrow">Merchant access</span><h1>Seller Studio.</h1><p class="muted">Manage products, suppliers and the evidence behind every claim.</p><div class="panel"><form class="form" data-action="'+h(state.authMode)+'"><h2>'+ (state.authMode==='register'?'Create your account':'Welcome back')+'</h2><label>Email<input class="input" name="email" type="email" required autocomplete="email"></label><label>Password<input class="input" name="password" type="password" minlength="12" maxlength="128" required autocomplete="'+(state.authMode==='register'?'new-password':'current-password')+'"><span class="field-hint">12 characters minimum. This is a staging environment. Verify your email and complete seller identity checks before onboarding. Do not enter real customer data.</span></label><button class="btn btn-dark">'+(state.authMode==='register'?'Create account':'Sign in')+'</button><button class="btn btn-soft" type="button" data-op="toggle-auth">'+(state.authMode==='register'?'Already registered? Sign in':'Need an account? Register')+'</button></form></div></div></div>';
 }
 function createStore(){
  main.innerHTML='<div class="container"><div class="auth-shell"><span class="eyebrow">Welcome to Seller Studio</span><h1>Start with your store.</h1><p class="muted">Create a name and permanent shop address. Your account can operate multiple separate stores.</p><div class="panel"><form class="form" data-action="store"><label>Store name<input class="input" name="name" maxlength="100" required placeholder="e.g. Fair Goods Collective"></label><label>Store URL slug (optional)<input class="input" name="slug" maxlength="70" placeholder="fair-goods-collective"></label><button class="btn btn-dark">Create store →</button></form></div></div></div>';
@@ -292,6 +315,12 @@ async function operatorDashboard(){
 async function render(){
  try{
   const pathname=location.pathname;
+  // Give the platform a coherent black/lime identity everywhere except the
+  // buyer's shop, individual product passports and order/returns pages.
+  // Those buyer-facing transaction views deliberately retain their own theme.
+  document.body.dataset.ecTheme=pathname.startsWith('/shop/')||
+   pathname.startsWith('/product/')||pathname==='/order-result'
+   ?'shop':pathname==='/'?'home':'dark';
   if(pathname==='/'){await discover();return}
   if(pathname==='/about'||pathname==='/sell'){landing(pathname.slice(1));return}
   if(pathname==='/verify'){await verificationPage();return}
@@ -310,6 +339,16 @@ async function render(){
  }catch(e){main.innerHTML='<div class="container page-head"><h1>We could not load this page.</h1><p>'+h(e.message)+'</p><a href="/" data-link>Return home</a></div>'}
 }
 
+// One distinct transition word per destination; no repeated generic ETHICAL flight.
+const ETHICAL_MASK_WORDS=Object.freeze({
+ how:'ETHICAL',
+ proof:'TRUST',
+ rewards:'IMPACT',
+ products:'DISCOVER',
+ dashboard:'CREATE',
+ sell:'BUILD',
+ about:'HONEST'
+});
 let ethicalOverlayTrigger=null;
 let ethicalOverlayName='';
 let ethicalZoomRun=null;
@@ -373,7 +412,8 @@ function playEthicalTextMask(host,panel,name,trigger,options={}){
  const family=origin.style.fontFamily||'Arial,sans-serif';
  const weight=origin.style.fontWeight||'800';
  ctx.font=weight+' '+fontSize+'px '+family;
- const word='ETHICAL';
+ const word=ETHICAL_MASK_WORDS[name];
+ if(!word)return false;
  const measuredWidth=Math.max(60,ctx.measureText(word).width);
  const startLeft=origin.centered?origin.rect.left+(origin.rect.width-measuredWidth)/2:origin.rect.left;
  const startTop=origin.centered?origin.rect.top+(origin.rect.height-fontSize)/2:origin.rect.top;
@@ -473,7 +513,8 @@ async function openEthicalOverlay(name,trigger){
  if(name==='products')await loadCatalog('');
 }
 async function navigateWithEthicalMask(to,trigger){
- if(to!=='/dashboard')return;
+ if(!['/dashboard','/sell','/about'].includes(to))return;
+ const maskName=to.slice(1);
  const origin=ethicalRevealOrigin(trigger);
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!origin){navigate(to);return}
  cancelEthicalZoom();
@@ -494,7 +535,7 @@ async function navigateWithEthicalMask(to,trigger){
  window.scrollTo(0,0);
  try{
   await render();
-  if(!playEthicalTextMask(null,null,'route',trigger,{
+  if(!playEthicalTextMask(null,null,maskName,trigger,{
    origin,canvas,onComplete:()=>main.focus({preventScroll:true})
   })){
    canvas.remove();
