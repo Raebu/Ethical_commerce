@@ -336,7 +336,14 @@ function closeEthicalOverlay(immediate=false){
  if(!immediate&&trigger?.isConnected)trigger.focus();
  ethicalOverlayTrigger=null;
 }
-function ethicalRevealOrigin(){
+function ethicalRevealOrigin(trigger){
+ // Cards are the origin of the same letter-window when moving to new pages.
+ const card=trigger?.closest?.('.ec-action-card');
+ if(card){
+  const rect=card.getBoundingClientRect();
+  const label=card.querySelector('h3')||card;
+  if(rect.width&&rect.height)return {rect,style:getComputedStyle(label),centered:true};
+ }
  // Use a DOM Range over precisely ETHICAL, not the entire bold phrase.
  const source=document.querySelector('.home-lead strong');
  const node=source?.firstChild;
@@ -350,10 +357,10 @@ function ethicalRevealOrigin(){
  if(rect.width<1||rect.height<1)return null;
  return {rect,style:getComputedStyle(source)};
 }
-function playEthicalTextMask(host,panel,name){
- const origin=ethicalRevealOrigin();
+function playEthicalTextMask(host,panel,name,trigger,options={}){
+ const origin=options.origin||ethicalRevealOrigin(trigger);
  if(!origin||!document.createElement('canvas').getContext)return false;
- const mask=document.createElement('canvas');
+ const mask=options.canvas||document.createElement('canvas');
  mask.className='ec-zoom-mask';
  mask.setAttribute('aria-hidden','true');
  const width=window.innerWidth,height=window.innerHeight;
@@ -368,6 +375,8 @@ function playEthicalTextMask(host,panel,name){
  ctx.font=weight+' '+fontSize+'px '+family;
  const word='ETHICAL';
  const measuredWidth=Math.max(60,ctx.measureText(word).width);
+ const startLeft=origin.centered?origin.rect.left+(origin.rect.width-measuredWidth)/2:origin.rect.left;
+ const startTop=origin.centered?origin.rect.top+(origin.rect.height-fontSize)/2:origin.rect.top;
  const fitScale=Math.max(2.6,width/(measuredWidth*1.1));
  // The last zoom moves into the solid vertical stem of E. The mask then
  // disappears as the enlarged letter continues beyond the viewport.
@@ -379,17 +388,22 @@ function playEthicalTextMask(host,panel,name){
  ethicalZoomRun=run;
  // Destination content is rendered underneath, but the mask is completely
  // opaque outside the actual letterforms from the very first frame.
- host.classList.remove('is-open');
- host.classList.add('ec-mask-stage');
+ if(host){
+  host.classList.remove('is-open');
+  host.classList.add('ec-mask-stage');
+ }
  document.body.append(mask);
  const finish=()=>{
   if(ethicalZoomRun!==run||run.cancelled)return;
   ethicalZoomRun=null;
   run.mask.remove();
-  host.classList.remove('ec-mask-stage');
-  if(ethicalOverlayName!==name)return;
-  host.classList.add('is-open');
-  panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
+  if(host){
+   host.classList.remove('ec-mask-stage');
+   if(ethicalOverlayName!==name)return;
+   host.classList.add('is-open');
+   panel.removeAttribute('aria-busy');
+   panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
+  }else options.onComplete?.();
  };
  const start=performance.now();
  function frame(now){
@@ -402,8 +416,8 @@ function playEthicalTextMask(host,panel,name){
   const move=ease(Math.min(1,p/.66));
   const eFocus=ease((p-.83)/.17);
   const anchorX=lerp(measuredWidth*.5,fontSize*.13,eFocus);
-  const x=lerp(origin.rect.left,width/2-anchorX*scale,move);
-  const y=lerp(origin.rect.top+fontSize*.8,height/2+fontSize*.35*scale,move);
+  const x=lerp(startLeft,width/2-anchorX*scale,move);
+  const y=lerp(startTop+fontSize*.8,height/2+fontSize*.35*scale,move);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(0,0,width,height);
@@ -432,11 +446,11 @@ function playEthicalTextMask(host,panel,name){
  return true;
 }
 async function openEthicalOverlay(name,trigger){
- const valid=['how','proof','products'];
+ const valid=['how','proof','products','rewards'];
  if(!valid.includes(name))return;
  const host=document.querySelector('#ec-overlay-host');
  if(!host)return;
- const switching=!!ethicalOverlayName;
+ const origin=ethicalRevealOrigin(trigger);
  cancelEthicalZoom();
  const current=host.querySelector('.ec-overlay-panel:not([hidden])');
  if(current)current.hidden=true;
@@ -447,15 +461,49 @@ async function openEthicalOverlay(name,trigger){
  panel.hidden=false;
  host.setAttribute('aria-hidden','false');
  document.body.classList.add('ec-overlay-active');
- // Respect accessibility preferences, and don't replay the sequence between
- // open panels. Esc and the close button remain available at all times.
- if(switching||window.matchMedia('(prefers-reduced-motion: reduce)').matches||
-    !playEthicalTextMask(host,panel,name)){
+ // All clickable cards replay the same reveal; reduced motion stays instant.
+ panel.setAttribute('aria-busy','true');
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||
+    !playEthicalTextMask(host,panel,name,trigger,{origin})){
+  panel.removeAttribute('aria-busy');
   host.classList.remove('ec-mask-stage');
   host.classList.add('is-open');
   panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
  }
  if(name==='products')await loadCatalog('');
+}
+async function navigateWithEthicalMask(to,trigger){
+ if(to!=='/dashboard')return;
+ const origin=ethicalRevealOrigin(trigger);
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!origin){navigate(to);return}
+ cancelEthicalZoom();
+ const canvas=document.createElement('canvas');
+ canvas.className='ec-zoom-mask';
+ const width=window.innerWidth,height=window.innerHeight;
+ const dpr=Math.min(devicePixelRatio||1,2);
+ canvas.width=Math.round(width*dpr);
+ canvas.height=Math.round(height*dpr);
+ const ctx=canvas.getContext('2d');
+ if(!ctx){navigate(to);return}
+ ctx.scale(dpr,dpr);
+ ctx.fillStyle='#050505';
+ ctx.fillRect(0,0,width,height);
+ document.body.append(canvas);
+ closeEthicalOverlay(true);
+ history.pushState({},'',to);
+ window.scrollTo(0,0);
+ try{
+  await render();
+  if(!playEthicalTextMask(null,null,'route',trigger,{
+   origin,canvas,onComplete:()=>main.focus({preventScroll:true})
+  })){
+   canvas.remove();
+   main.focus({preventScroll:true});
+  }
+ }catch{
+  canvas.remove();
+  await render();
+ }
 }
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&ethicalOverlayName){e.preventDefault();closeEthicalOverlay();return}
@@ -470,6 +518,12 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('popstate',render);
 document.addEventListener('click',async e=>{
+ const actionCard=e.target.closest('a[data-ethical-route]');
+ if(actionCard&&location.pathname==='/'&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&!e.altKey&&e.button===0){
+  e.preventDefault();
+  await navigateWithEthicalMask(actionCard.getAttribute('href'),actionCard);
+  return;
+ }
  const overlayOpen=e.target.closest('[data-overlay-open]');
  if(overlayOpen&&location.pathname==='/'){e.preventDefault();await openEthicalOverlay(overlayOpen.dataset.overlayOpen,overlayOpen);return}
  if(e.target.closest('[data-overlay-close]')){e.preventDefault();closeEthicalOverlay();return}
