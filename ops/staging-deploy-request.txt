@@ -26,3 +26,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy PR #26 correcting top masthead and compact footer for Ethical Commerce one-screen public homepage, preserving immersive overlays. Staging only. No payment flags changed.
 
 2026-10-13: Deploy PR #27 home footer zero-padding alignment on isolated staging. Keep seller studio and payment flags unchanged.
+
+2026-10-13: Deploy PR #28 readable 2.7-second ETHICAL flying word transition with no oversized static word in overlay; isolated staging only, payment flags unchanged.
