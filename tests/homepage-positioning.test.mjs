@@ -29,7 +29,9 @@ test('original home content moves to accessible overlay panels, not a long scrol
  assert.match(markup,/data-overlay-close/);
  assert.match(css,/html:has\(\.home-shell\)\{overflow:hidden\}/);
  assert.match(css,/\.ec-overlay-host\.is-open/);
- assert.match(css,/\.ec-overlay-display/);
+ assert.doesNotMatch(markup,/class="ec-overlay-display"/);
+ assert.match(css,/\.ec-zoom-flight\{/);
+ assert.match(css,/\.ec-zoom-curtain\.is-revealing/);
  assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:relative;top:0;bottom:auto/);
  assert.match(css,/body:has\(\.home-shell\) \.site-footer\{display:block/);
  assert.match(css,/body:has\(\.home-shell\) \.site-footer \.footer-grid/);
@@ -67,4 +69,16 @@ test('top header is preserved and the compact footer replaces lower homepage sec
  assert.match(css,/body:has\(\.home-shell\) \.site-footer \.home-mini-footer\{display:flex/);
  assert.doesNotMatch(css,/body:has\(\.home-shell\) \.site-header\{position:fixed;top:auto;bottom:0/);
  assert.match(app,/function navigate\(to\)\{closeEthicalOverlay\(true\);/);
+});
+
+test('ETHICAL enlarges from the homepage phrase slowly, never rests as a duplicate headline',()=>{
+ assert.doesNotMatch(markup,/class="ec-overlay-display"/);
+ assert.match(app,/document\.querySelector\('\.home-lead strong'\)/);
+ assert.match(app,/word\.textContent='ETHICAL'/);
+ assert.match(app,/duration:2700/);
+ assert.match(app,/curtain\.classList\.add\('is-revealing'\)/);
+ assert.match(app,/cancelEthicalZoom\(\)/);
+ assert.match(css,/\.ec-zoom-flight\{/);
+ assert.match(css,/\.ec-zoom-curtain\{/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
 });
