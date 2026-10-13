@@ -285,7 +285,7 @@ body:has(.home-shell) .ec-home-openers{display:none}
 .ec-overlay-host.is-open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .65s ease,visibility 0s}
 /* During the reveal the destination already exists; only actual glyphs can see it. */
 .ec-overlay-host.ec-mask-stage{opacity:1;visibility:visible;pointer-events:none;transition:none}
-.ec-zoom-mask{position:fixed;inset:0;z-index:45;width:100vw;height:100dvh;display:block;pointer-events:none;will-change:opacity}
+.ec-zoom-mask{position:fixed;inset:0;z-index:45;width:100vw;height:100dvh;display:block;pointer-events:auto;will-change:opacity}
 .ec-overlay-panel{position:absolute;inset:0;background:#050505;color:#f7f8f2;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#536540 #070707}
 .ec-overlay-panel[hidden]{display:none}
 .ec-overlay-top{height:72px;position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,74px);background:#050505f5;border-bottom:1px solid #30372a;color:#d3ff5c;font-size:.7rem;font-weight:840;letter-spacing:.12em}
