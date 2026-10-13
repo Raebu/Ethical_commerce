@@ -67,7 +67,7 @@ async function api(path,options={}){
  return data;
 }
 const post=(path,body,method='POST')=>api(path,{method,body:JSON.stringify(body)});
-function navigate(to){history.pushState({},'',to);window.scrollTo(0,0);render()}
+function navigate(to){closeEthicalOverlay(true);document.body.classList.remove('ec-overlay-active');history.pushState({},'',to);window.scrollTo(0,0);render()}
 const currencyNotice='<div class="notice">Checkout is not active. Browsing and product information are available; orders and payment processing require additional compliance and provider integration.</div>';
 const noData=(title,help)=>'<div class="empty"><h3>'+h(title)+'</h3><p>'+h(help)+'</p></div>';
 function productCard(p){return '<article class="product-card"><div class="product-image">'+art(p.image_url,h(p.name))+'</div><div class="product-body"><span class="pill">Origin evidence available if provided</span><h3>'+h(p.name)+'</h3><p>'+h((p.description||'Product details provided by the seller.').slice(0,135))+'</p><div class="product-meta"><span class="product-price">'+h(price(p.price_minor,p.currency))+'</span><a class="card-link" href="/product/'+h(p.id)+'" data-link>View evidence ↗</a></div></div></article>'}

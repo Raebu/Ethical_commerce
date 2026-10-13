@@ -30,8 +30,13 @@ test('original home content moves to accessible overlay panels, not a long scrol
  assert.match(css,/html:has\(\.home-shell\)\{overflow:hidden\}/);
  assert.match(css,/\.ec-overlay-host\.is-open/);
  assert.match(css,/\.ec-overlay-display/);
- assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:fixed;top:auto;bottom:0/);
- assert.match(css,/body:has\(\.home-shell\) \.site-footer\{display:none\}/);
+ assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:relative;top:0;bottom:auto/);
+ assert.match(css,/body:has\(\.home-shell\) \.site-footer\{display:block/);
+ assert.match(css,/body:has\(\.home-shell\) \.site-footer \.footer-grid/);
+ assert.match(html,/class="container home-mini-footer"/);
+ assert.match(html,/data-home-overlay="how"/);
+ assert.match(html,/data-home-overlay="proof"/);
+ assert.match(html,/data-home-overlay="products"/);
 });
 
 test('overlay is closable, focus-aware and respects reduced motion',()=>{
@@ -52,4 +57,14 @@ test('ethical and reward disclosures remain honest',()=>{
  assert.ok(!css.includes('body{background:#000!important}'));
  assert.match(app,/async function loadCatalog/);
  assert.match(html,/Create your store/);
+});
+
+test('top header is preserved and the compact footer replaces lower homepage sections',()=>{
+ assert.match(html,/<header class="site-header">/);
+ assert.match(html,/class="container header-inner"/);
+ assert.match(html,/class="container home-mini-footer"/);
+ assert.match(css,/body:has\(\.home-shell\) #main\{height:auto;flex:1 1 auto;min-height:0;overflow:hidden\}/);
+ assert.match(css,/body:has\(\.home-shell\) \.site-footer \.home-mini-footer\{display:flex/);
+ assert.doesNotMatch(css,/body:has\(\.home-shell\) \.site-header\{position:fixed;top:auto;bottom:0/);
+ assert.match(app,/function navigate\(to\)\{closeEthicalOverlay\(true\);/);
 });
