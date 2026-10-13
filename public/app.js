@@ -73,7 +73,7 @@ const noData=(title,help)=>'<div class="empty"><h3>'+h(title)+'</h3><p>'+h(help)
 function productCard(p){return '<article class="product-card"><div class="product-image">'+art(p.image_url,h(p.name))+'</div><div class="product-body"><span class="pill">Origin evidence available if provided</span><h3>'+h(p.name)+'</h3><p>'+h((p.description||'Product details provided by the seller.').slice(0,135))+'</p><div class="product-meta"><span class="product-price">'+h(price(p.price_minor,p.currency))+'</span><a class="card-link" href="/product/'+h(p.id)+'" data-link>View evidence ↗</a></div></div></article>'}
 async function discover(){
  closeEthicalOverlay(true);
- main.innerHTML="<div class=\"container home-shell\">\n<section class=\"home-hero\" aria-labelledby=\"home-hero-title\">\n <div class=\"home-hero-copy\">\n  <span class=\"home-kicker\"><span class=\"home-kicker-dot\" aria-hidden=\"true\"></span> THE FUTURE OF ETHICAL COMMERCE / EARLY ACCESS</span>\n  <h1 id=\"home-hero-title\">WHAT IF DOING <span>GOOD</span> ACTUALLY <span>PAID?</span></h1>\n  <p class=\"home-lead\">Create your <strong>ethical dropshipping store</strong>. Trace every product from source to doorstep. Show the evidence, uncover the gaps and help customers see where their money goes.</p>\n  <p class=\"home-second-line\">Because being ethical shouldn't be just another marketing claim. It should be something you can <strong>prove.</strong></p>\n  <div class=\"home-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark home-main-cta\">Create your store <span aria-hidden=\"true\">↗</span></a><a href=\"#how-it-works\" class=\"btn btn-light home-secondary-cta\" data-overlay-open=\"how\">Show me how <span aria-hidden=\"true\">↓</span></a></div>\n  <div class=\"home-quick-proof\" aria-label=\"Available features\"><span>✓ Build your storefront</span><span>✓ Trace suppliers</span><span>✓ Publish evidence passports</span></div>\n  <p class=\"home-availability\"><strong>Our vision:</strong> reward actions backed by evidence, not empty promises. Reward payments and payment-split reporting are <strong>in development</strong>, not available yet. Live checkout and automated fulfilment are also disabled during early access.</p>\n </div>\n <div class=\"home-visual\" aria-label=\"Illustrative supply chain traceability view. This is not a verified product or a real payment report.\">\n  <div class=\"home-visual-top\"><span class=\"visual-live-dot\" aria-hidden=\"true\"></span><span>THE PROOF BEHIND THE PRODUCT</span><span class=\"home-preview-label\">CONCEPT PREVIEW</span></div>\n  <div class=\"home-visual-product\"><div class=\"visual-product-symbol\" aria-hidden=\"true\">↗</div><div><span class=\"home-visual-eyebrow\">An example product passport</span><h2>Every product has a story.</h2><p>Make yours visible, honest and traceable.</p></div></div>\n  <ol class=\"home-journey\">\n   <li><span class=\"home-journey-node checked\" aria-hidden=\"true\">✓</span><div><strong>01 / SOURCE</strong><span>Origin and supplier recorded</span></div><span class=\"journey-chip\">Declared</span></li>\n   <li><span class=\"home-journey-node checked\" aria-hidden=\"true\">✓</span><div><strong>02 / PRODUCE</strong><span>Materials and manufacturing evidence</span></div><span class=\"journey-chip\">Evidence linked</span></li>\n   <li><span class=\"home-journey-node unknown\" aria-hidden=\"true\">?</span><div><strong>03 / MOVE</strong><span>Transport and handoffs</span></div><span class=\"journey-chip gap\">Evidence missing</span></li>\n   <li><span class=\"home-journey-node unknown\" aria-hidden=\"true\">?</span><div><strong>04 / DELIVER</strong><span>Final journey to the buyer</span></div><span class=\"journey-chip gap\">Not disclosed</span></li>\n  </ol>\n  <div class=\"home-money-card\"><div class=\"home-money-head\"><span class=\"money-icon\" aria-hidden=\"true\">£</span><div><strong>WHO REALLY GETS PAID?</strong><p>Our goal: make supplier costs and money flow easier to understand.</p></div></div><span class=\"money-roadmap\">PAYMENT TRANSPARENCY / IN DEVELOPMENT</span></div>\n  <div class=\"home-visual-foot\">Illustrative data only. A seller declaration is not independent verification.</div>\n </div>\n</section><div class=\"ec-home-openers\"><button type=\"button\" data-overlay-open=\"how\">HOW IT WORKS ↗</button><button type=\"button\" data-overlay-open=\"proof\">OUR STANDARD ↗</button><button type=\"button\" data-overlay-open=\"products\">DISCOVER PRODUCTS ↗</button></div></div><div class=\"ec-overlay-host\" id=\"ec-overlay-host\" aria-hidden=\"true\"><section class=\"ec-overlay-panel\" id=\"ec-overlay-how\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-how-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / THE JOURNEY</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / THE JOURNEY</span><h2 id=\"ec-how-title\">HOW IT WORKS.</h2></div><section class=\"home-explain section\" id=\"how-it-works\" aria-labelledby=\"home-explain-title\">\n <div class=\"home-section-intro\"><span class=\"eyebrow\">STOP GUESSING. START SHOWING.</span><h2 id=\"home-explain-title\">DON'T JUST SAY <span>ETHICAL.</span> PROVE IT.</h2><p>Ever wish you could look behind a product before buying it? Ethical Commerce is being built around that idea — with a store and traceability tools you can start using in early access.</p></div>\n <div class=\"home-step-grid\">\n  <article class=\"home-step\"><span class=\"home-step-number\">01</span><div class=\"home-step-symbol\" aria-hidden=\"true\">↗</div><h3>CREATE YOUR STORE.</h3><p>Build your storefront, publish products and manage suppliers. Start selling differently, with better information at the centre.</p><span class=\"step-availability\">AVAILABLE IN PREVIEW</span></article>\n  <article class=\"home-step\"><span class=\"home-step-number\">02</span><div class=\"home-step-symbol\" aria-hidden=\"true\">◎</div><h3>PROVE THE JOURNEY.</h3><p>Record sourcing, manufacturing and transport stages. Attach evidence to product passports and disclose the parts you cannot yet verify.</p><span class=\"step-availability\">AVAILABLE IN PREVIEW</span></article>\n  <article class=\"home-step\"><span class=\"home-step-number\">03</span><div class=\"home-step-symbol\" aria-hidden=\"true\">£</div><h3>MAKE ETHICS REWARDING.</h3><p>Imagine rewarding verifiable good practice and showing how money moves through the supply chain. This is our ambition — not an active earnings programme.</p><span class=\"step-availability roadmap\">REWARDS &amp; PAYMENT INSIGHTS: PLANNED</span></article>\n </div>\n</section>\n<div class=\"overlay-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark\">Create your ethical store ↗</a><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"proof\">See the proof →</button><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"products\">Explore products →</button></div></div></section><section class=\"ec-overlay-panel\" id=\"ec-overlay-proof\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-proof-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / OUR STANDARD</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / OUR STANDARD</span><h2 id=\"ec-proof-title\">WHAT CAN YOU PROVE?</h2></div><section class=\"home-difference\" aria-labelledby=\"home-difference-title\"><div class=\"home-difference-copy\"><span class=\"eyebrow\">THE WORLD DOESN'T NEED ANOTHER EMPTY BADGE.</span><h2 id=\"home-difference-title\">PROOF IS THE <em>NEW LUXURY.</em></h2><p>What matters isn't whether a brand says “ethical”. It's what they can show you. Product passports distinguish seller statements from checked evidence, highlight missing steps and never invent independent certification.</p><a href=\"/about\" data-link class=\"home-inline-link\">Our evidence standard <span aria-hidden=\"true\">↗</span></a></div><div class=\"home-difference-detail\"><div class=\"home-detail-header\">WHAT CAN A PRODUCT PASSPORT SHOW?</div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Supplier &amp; origin</strong><span>Recorded</span></div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Manufacturing &amp; materials</strong><span>Documented</span></div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Evidence classification</strong><span>Visible</span></div><div><span class=\"detail-dot amber\" aria-hidden=\"true\"></span><strong>Unknown or missing details</strong><span>Unhidden</span></div><p>Disclosure is not proof of ethical certification. The platform shows evidence status and gaps.</p></div></section>\n<div class=\"overlay-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark\">Create your ethical store ↗</a><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"proof\">See the proof →</button><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"products\">Explore products →</button></div></div></section><section class=\"ec-overlay-panel\" id=\"ec-overlay-products\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-products-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / DISCOVER</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / DISCOVER</span><h2 id=\"ec-products-title\">EXPLORE PRODUCTS.</h2></div><section id=\"discover\" class=\"section home-catalogue\" aria-labelledby=\"catalogue-heading\"><div class=\"section-heading\"><div><span class=\"eyebrow\">FOR PEOPLE WHO ASK MORE QUESTIONS</span><h2 id=\"catalogue-heading\">SHOP WITH YOUR EYES OPEN.</h2><p>Explore published products and examine seller-provided evidence. Missing information stays visible.</p></div><form data-action=\"search\" class=\"search\"><input class=\"input\" name=\"q\" type=\"search\" placeholder=\"Search transparent products\" aria-label=\"Search products\"><button class=\"btn btn-dark\">Search</button></form></div><div id=\"catalog\" aria-live=\"polite\"><div class=\"empty\">Loading published products…</div></div></section>\n<div class=\"overlay-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark\">Create your ethical store ↗</a><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"proof\">See the proof →</button><button type=\"button\" class=\"btn btn-light\" data-overlay-open=\"products\">Explore products →</button></div></div></section></div>";
+ main.innerHTML="<div class=\"container home-shell\">\n<section class=\"home-hero\" aria-labelledby=\"home-hero-title\">\n <div class=\"home-hero-copy\">\n  <span class=\"home-kicker\"><span class=\"home-kicker-dot\" aria-hidden=\"true\"></span> THE FUTURE OF ETHICAL COMMERCE / EARLY ACCESS</span>\n  <h1 id=\"home-hero-title\">WHAT IF DOING <span>GOOD</span> ACTUALLY <span>PAID?</span></h1>\n  <p class=\"home-lead\">Create your <strong>ethical dropshipping store</strong>. Trace every product from source to doorstep. Show the evidence, uncover the gaps and help customers see where their money goes.</p>\n  <p class=\"home-second-line\">Because being ethical shouldn't be just another marketing claim. It should be something you can <strong>prove.</strong></p>\n  <div class=\"home-actions\"><a href=\"/dashboard\" data-link class=\"btn btn-dark home-main-cta\">Create your store <span aria-hidden=\"true\">↗</span></a><a href=\"#how-it-works\" class=\"btn btn-light home-secondary-cta\" data-overlay-open=\"how\">Show me how <span aria-hidden=\"true\">↓</span></a></div>\n  <div class=\"home-quick-proof\" aria-label=\"Available features\"><span>✓ Build your storefront</span><span>✓ Trace suppliers</span><span>✓ Publish evidence passports</span></div>\n  <p class=\"home-availability\"><strong>Our vision:</strong> reward actions backed by evidence, not empty promises. Reward payments and payment-split reporting are <strong>in development</strong>, not available yet. Live checkout and automated fulfilment are also disabled during early access.</p>\n </div>\n <div class=\"home-visual\" aria-label=\"Illustrative supply chain traceability view. This is not a verified product or a real payment report.\">\n  <div class=\"home-visual-top\"><span class=\"visual-live-dot\" aria-hidden=\"true\"></span><span>THE PROOF BEHIND THE PRODUCT</span><span class=\"home-preview-label\">CONCEPT PREVIEW</span></div>\n  <div class=\"home-visual-product\"><div class=\"visual-product-symbol\" aria-hidden=\"true\">↗</div><div><span class=\"home-visual-eyebrow\">An example product passport</span><h2>Every product has a story.</h2><p>Make yours visible, honest and traceable.</p></div></div>\n  <ol class=\"home-journey\">\n   <li><span class=\"home-journey-node checked\" aria-hidden=\"true\">✓</span><div><strong>01 / SOURCE</strong><span>Origin and supplier recorded</span></div><span class=\"journey-chip\">Declared</span></li>\n   <li><span class=\"home-journey-node checked\" aria-hidden=\"true\">✓</span><div><strong>02 / PRODUCE</strong><span>Materials and manufacturing evidence</span></div><span class=\"journey-chip\">Evidence linked</span></li>\n   <li><span class=\"home-journey-node unknown\" aria-hidden=\"true\">?</span><div><strong>03 / MOVE</strong><span>Transport and handoffs</span></div><span class=\"journey-chip gap\">Evidence missing</span></li>\n   <li><span class=\"home-journey-node unknown\" aria-hidden=\"true\">?</span><div><strong>04 / DELIVER</strong><span>Final journey to the buyer</span></div><span class=\"journey-chip gap\">Not disclosed</span></li>\n  </ol>\n  <div class=\"home-money-card\"><div class=\"home-money-head\"><span class=\"money-icon\" aria-hidden=\"true\">£</span><div><strong>WHO REALLY GETS PAID?</strong><p>Our goal: make supplier costs and money flow easier to understand.</p></div></div><span class=\"money-roadmap\">PAYMENT TRANSPARENCY / IN DEVELOPMENT</span></div>\n  <div class=\"home-visual-foot\">Illustrative data only. A seller declaration is not independent verification.</div>\n </div>\n</section><div class=\"ec-home-openers\"><button type=\"button\" data-overlay-open=\"how\">HOW IT WORKS ↗</button><button type=\"button\" data-overlay-open=\"proof\">OUR STANDARD ↗</button><button type=\"button\" data-overlay-open=\"products\">DISCOVER PRODUCTS ↗</button></div></div><div class=\"ec-overlay-host\" id=\"ec-overlay-host\" aria-hidden=\"true\"><section class=\"ec-overlay-panel\" id=\"ec-overlay-how\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-how-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / THE JOURNEY</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / THE JOURNEY</span><h2 id=\"ec-how-title\">HOW IT WORKS.</h2></div><section class=\"home-explain section\" id=\"how-it-works\" aria-labelledby=\"home-explain-title\">\n <div class=\"home-section-intro\"><span class=\"eyebrow\">STOP GUESSING. START SHOWING.</span><h2 id=\"home-explain-title\">DON'T JUST SAY <span>ETHICAL.</span> PROVE IT.</h2><p>Ever wish you could look behind a product before buying it? Ethical Commerce is being built around that idea — with a store and traceability tools you can start using in early access.</p></div>\n <div class=\"home-step-grid\">\n  <a class=\"home-step ec-action-card\" href=\"/dashboard\" data-ethical-route=\"dashboard\" aria-label=\"Create your store — open Seller Studio\"><span class=\"home-step-number\">01</span><div class=\"home-step-symbol\" aria-hidden=\"true\">↗</div><h3>CREATE YOUR STORE.</h3><p>Build your storefront, publish products and manage suppliers. Start selling differently, with better information at the centre.</p><span class=\"step-availability\">AVAILABLE IN PREVIEW</span></a>\n  <a class=\"home-step ec-action-card\" href=\"#standard\" data-overlay-open=\"proof\" aria-label=\"Prove the journey — explore traceability and evidence\"><span class=\"home-step-number\">02</span><div class=\"home-step-symbol\" aria-hidden=\"true\">◎</div><h3>PROVE THE JOURNEY.</h3><p>Record sourcing, manufacturing and transport stages. Attach evidence to product passports and disclose the parts you cannot yet verify.</p><span class=\"step-availability\">AVAILABLE IN PREVIEW</span></a>\n  <a class=\"home-step ec-action-card\" href=\"#rewards\" data-overlay-open=\"rewards\" aria-label=\"Make ethics rewarding — explore the future rewards vision\"><span class=\"home-step-number\">03</span><div class=\"home-step-symbol\" aria-hidden=\"true\">£</div><h3>MAKE ETHICS REWARDING.</h3><p>Imagine rewarding verifiable good practice and showing how money moves through the supply chain. This is our ambition — not an active earnings programme.</p><span class=\"step-availability roadmap\">REWARDS &amp; PAYMENT INSIGHTS: PLANNED</span></a>\n </div>\n</section>\n</div></section><section class=\"ec-overlay-panel\" id=\"ec-overlay-proof\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-proof-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / OUR STANDARD</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / OUR STANDARD</span><h2 id=\"ec-proof-title\">WHAT CAN YOU PROVE?</h2></div><section class=\"home-difference\" aria-labelledby=\"home-difference-title\"><div class=\"home-difference-copy\"><span class=\"eyebrow\">THE WORLD DOESN'T NEED ANOTHER EMPTY BADGE.</span><h2 id=\"home-difference-title\">PROOF IS THE <em>NEW LUXURY.</em></h2><p>What matters isn't whether a brand says “ethical”. It's what they can show you. Product passports distinguish seller statements from checked evidence, highlight missing steps and never invent independent certification.</p><a href=\"/about\" data-link class=\"home-inline-link\">Our evidence standard <span aria-hidden=\"true\">↗</span></a></div><div class=\"home-difference-detail\"><div class=\"home-detail-header\">WHAT CAN A PRODUCT PASSPORT SHOW?</div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Supplier &amp; origin</strong><span>Recorded</span></div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Manufacturing &amp; materials</strong><span>Documented</span></div><div><span class=\"detail-dot green\" aria-hidden=\"true\"></span><strong>Evidence classification</strong><span>Visible</span></div><div><span class=\"detail-dot amber\" aria-hidden=\"true\"></span><strong>Unknown or missing details</strong><span>Unhidden</span></div><p>Disclosure is not proof of ethical certification. The platform shows evidence status and gaps.</p></div></section>\n</div></section><section class=\"ec-overlay-panel\" id=\"ec-overlay-rewards\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-rewards-title\" tabindex=\"-1\" hidden>\n<div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / REWARDS VISION</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div>\n<div class=\"ec-overlay-content\">\n<div class=\"ec-overlay-heading\"><span>EXPLORE / THE FUTURE</span><h2 id=\"ec-rewards-title\">MAKE ETHICS REWARDING.</h2></div>\n<section class=\"ec-rewards-story\" aria-labelledby=\"ec-rewards-story-title\">\n <span class=\"eyebrow\">WHY SHOULDN'T DOING GOOD BE WORTH SOMETHING?</span>\n <h3 id=\"ec-rewards-story-title\">DO THE RIGHT THING. <span>PROVE THE DIFFERENCE.</span></h3>\n <p>We want responsible choices to be visible and valuable. The first step is an honest record of where products come from, who handles them and which claims have evidence. Our longer-term vision is to recognise conduct that can genuinely be demonstrated.</p>\n <div class=\"ec-rewards-grid\">\n  <div><span class=\"ec-reward-index\">01 / AVAILABLE IN PREVIEW</span><h4>Record the evidence.</h4><p>Document suppliers, sourcing and production stages, including any information that is missing or unverified.</p></div>\n  <div><span class=\"ec-reward-index\">02 / IN DEVELOPMENT</span><h4>Understand who benefits.</h4><p>Work towards supplier-cost and payment-flow disclosures where accurate, permissioned financial data is available.</p></div>\n  <div><span class=\"ec-reward-index\">03 / FUTURE CONCEPT</span><h4>Reward what can be proven.</h4><p>Explore incentives for documented ethical actions, subject to suitable funding, safeguards and legal review.</p></div>\n </div>\n <p class=\"ec-rewards-disclaimer\">There is no active cash-rewards programme, earnings opportunity or verified payment-split reporting. Ethical claims require supporting evidence; seller declarations are not independent certification.</p>\n</section>\n</div>\n</section><section class=\"ec-overlay-panel\" id=\"ec-overlay-products\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ec-products-title\" tabindex=\"-1\" hidden><div class=\"ec-overlay-top\"><span>ETHICAL COMMERCE / DISCOVER</span><button class=\"ec-overlay-close\" type=\"button\" data-overlay-close aria-label=\"Close and return to homepage\">✕ <span>Close</span></button></div><div class=\"ec-overlay-content\"><div class=\"ec-overlay-heading\"><span>EXPLORE / DISCOVER</span><h2 id=\"ec-products-title\">EXPLORE PRODUCTS.</h2></div><section id=\"discover\" class=\"section home-catalogue\" aria-labelledby=\"catalogue-heading\"><div class=\"section-heading\"><div><span class=\"eyebrow\">FOR PEOPLE WHO ASK MORE QUESTIONS</span><h2 id=\"catalogue-heading\">SHOP WITH YOUR EYES OPEN.</h2><p>Explore published products and examine seller-provided evidence. Missing information stays visible.</p></div><form data-action=\"search\" class=\"search\"><input class=\"input\" name=\"q\" type=\"search\" placeholder=\"Search transparent products\" aria-label=\"Search products\"><button class=\"btn btn-dark\">Search</button></form></div><div id=\"catalog\" aria-live=\"polite\"><div class=\"empty\">Loading published products…</div></div></section>\n</div></section></div>";
 }
 async function loadCatalog(q){
  const target=document.querySelector('#catalog');if(!target)return;
@@ -336,7 +336,14 @@ function closeEthicalOverlay(immediate=false){
  if(!immediate&&trigger?.isConnected)trigger.focus();
  ethicalOverlayTrigger=null;
 }
-function ethicalRevealOrigin(){
+function ethicalRevealOrigin(trigger){
+ // Cards are the origin of the same letter-window when moving to new pages.
+ const card=trigger?.closest?.('.ec-action-card');
+ if(card){
+  const rect=card.getBoundingClientRect();
+  const label=card.querySelector('h3')||card;
+  if(rect.width&&rect.height)return {rect,style:getComputedStyle(label),centered:true};
+ }
  // Use a DOM Range over precisely ETHICAL, not the entire bold phrase.
  const source=document.querySelector('.home-lead strong');
  const node=source?.firstChild;
@@ -350,10 +357,10 @@ function ethicalRevealOrigin(){
  if(rect.width<1||rect.height<1)return null;
  return {rect,style:getComputedStyle(source)};
 }
-function playEthicalTextMask(host,panel,name){
- const origin=ethicalRevealOrigin();
+function playEthicalTextMask(host,panel,name,trigger,options={}){
+ const origin=options.origin||ethicalRevealOrigin(trigger);
  if(!origin||!document.createElement('canvas').getContext)return false;
- const mask=document.createElement('canvas');
+ const mask=options.canvas||document.createElement('canvas');
  mask.className='ec-zoom-mask';
  mask.setAttribute('aria-hidden','true');
  const width=window.innerWidth,height=window.innerHeight;
@@ -368,6 +375,8 @@ function playEthicalTextMask(host,panel,name){
  ctx.font=weight+' '+fontSize+'px '+family;
  const word='ETHICAL';
  const measuredWidth=Math.max(60,ctx.measureText(word).width);
+ const startLeft=origin.centered?origin.rect.left+(origin.rect.width-measuredWidth)/2:origin.rect.left;
+ const startTop=origin.centered?origin.rect.top+(origin.rect.height-fontSize)/2:origin.rect.top;
  const fitScale=Math.max(2.6,width/(measuredWidth*1.1));
  // The last zoom moves into the solid vertical stem of E. The mask then
  // disappears as the enlarged letter continues beyond the viewport.
@@ -379,17 +388,22 @@ function playEthicalTextMask(host,panel,name){
  ethicalZoomRun=run;
  // Destination content is rendered underneath, but the mask is completely
  // opaque outside the actual letterforms from the very first frame.
- host.classList.remove('is-open');
- host.classList.add('ec-mask-stage');
+ if(host){
+  host.classList.remove('is-open');
+  host.classList.add('ec-mask-stage');
+ }
  document.body.append(mask);
  const finish=()=>{
   if(ethicalZoomRun!==run||run.cancelled)return;
   ethicalZoomRun=null;
   run.mask.remove();
-  host.classList.remove('ec-mask-stage');
-  if(ethicalOverlayName!==name)return;
-  host.classList.add('is-open');
-  panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
+  if(host){
+   host.classList.remove('ec-mask-stage');
+   if(ethicalOverlayName!==name)return;
+   host.classList.add('is-open');
+   panel.removeAttribute('aria-busy');
+   panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
+  }else options.onComplete?.();
  };
  const start=performance.now();
  function frame(now){
@@ -402,8 +416,8 @@ function playEthicalTextMask(host,panel,name){
   const move=ease(Math.min(1,p/.66));
   const eFocus=ease((p-.83)/.17);
   const anchorX=lerp(measuredWidth*.5,fontSize*.13,eFocus);
-  const x=lerp(origin.rect.left,width/2-anchorX*scale,move);
-  const y=lerp(origin.rect.top+fontSize*.8,height/2+fontSize*.35*scale,move);
+  const x=lerp(startLeft,width/2-anchorX*scale,move);
+  const y=lerp(startTop+fontSize*.8,height/2+fontSize*.35*scale,move);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(0,0,width,height);
@@ -432,11 +446,11 @@ function playEthicalTextMask(host,panel,name){
  return true;
 }
 async function openEthicalOverlay(name,trigger){
- const valid=['how','proof','products'];
+ const valid=['how','proof','products','rewards'];
  if(!valid.includes(name))return;
  const host=document.querySelector('#ec-overlay-host');
  if(!host)return;
- const switching=!!ethicalOverlayName;
+ const origin=ethicalRevealOrigin(trigger);
  cancelEthicalZoom();
  const current=host.querySelector('.ec-overlay-panel:not([hidden])');
  if(current)current.hidden=true;
@@ -447,15 +461,49 @@ async function openEthicalOverlay(name,trigger){
  panel.hidden=false;
  host.setAttribute('aria-hidden','false');
  document.body.classList.add('ec-overlay-active');
- // Respect accessibility preferences, and don't replay the sequence between
- // open panels. Esc and the close button remain available at all times.
- if(switching||window.matchMedia('(prefers-reduced-motion: reduce)').matches||
-    !playEthicalTextMask(host,panel,name)){
+ // All clickable cards replay the same reveal; reduced motion stays instant.
+ panel.setAttribute('aria-busy','true');
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||
+    !playEthicalTextMask(host,panel,name,trigger,{origin})){
+  panel.removeAttribute('aria-busy');
   host.classList.remove('ec-mask-stage');
   host.classList.add('is-open');
   panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
  }
  if(name==='products')await loadCatalog('');
+}
+async function navigateWithEthicalMask(to,trigger){
+ if(to!=='/dashboard')return;
+ const origin=ethicalRevealOrigin(trigger);
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!origin){navigate(to);return}
+ cancelEthicalZoom();
+ const canvas=document.createElement('canvas');
+ canvas.className='ec-zoom-mask';
+ const width=window.innerWidth,height=window.innerHeight;
+ const dpr=Math.min(devicePixelRatio||1,2);
+ canvas.width=Math.round(width*dpr);
+ canvas.height=Math.round(height*dpr);
+ const ctx=canvas.getContext('2d');
+ if(!ctx){navigate(to);return}
+ ctx.scale(dpr,dpr);
+ ctx.fillStyle='#050505';
+ ctx.fillRect(0,0,width,height);
+ document.body.append(canvas);
+ closeEthicalOverlay(true);
+ history.pushState({},'',to);
+ window.scrollTo(0,0);
+ try{
+  await render();
+  if(!playEthicalTextMask(null,null,'route',trigger,{
+   origin,canvas,onComplete:()=>main.focus({preventScroll:true})
+  })){
+   canvas.remove();
+   main.focus({preventScroll:true});
+  }
+ }catch{
+  canvas.remove();
+  await render();
+ }
 }
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&ethicalOverlayName){e.preventDefault();closeEthicalOverlay();return}
@@ -470,6 +518,12 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('popstate',render);
 document.addEventListener('click',async e=>{
+ const actionCard=e.target.closest('a[data-ethical-route]');
+ if(actionCard&&location.pathname==='/'&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&!e.altKey&&e.button===0){
+  e.preventDefault();
+  await navigateWithEthicalMask(actionCard.getAttribute('href'),actionCard);
+  return;
+ }
  const overlayOpen=e.target.closest('[data-overlay-open]');
  if(overlayOpen&&location.pathname==='/'){e.preventDefault();await openEthicalOverlay(overlayOpen.dataset.overlayOpen,overlayOpen);return}
  if(e.target.closest('[data-overlay-close]')){e.preventDefault();closeEthicalOverlay();return}

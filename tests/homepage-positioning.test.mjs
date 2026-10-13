@@ -73,10 +73,10 @@ test('top header is preserved and the compact footer replaces lower homepage sec
 
 test('ETHICAL is a genuine content-window mask, not an opaque flying word',()=>{
  assert.doesNotMatch(markup,/class="ec-overlay-display"/);
- assert.match(app,/function ethicalRevealOrigin\(\)/);
+ assert.match(app,/function ethicalRevealOrigin\(trigger\)/);
  assert.match(app,/range\.setStart\(node,match\.index\)/);
  assert.match(app,/range\.setEnd\(node,match\.index\+match\[0\]\.length\)/);
- assert.match(app,/function playEthicalTextMask\(host,panel,name\)/);
+ assert.match(app,/function playEthicalTextMask\(host,panel,name,trigger,options=\{\}\)/);
  assert.match(app,/ctx\.globalCompositeOperation='destination-out'/);
  assert.match(app,/ctx\.fillText\(word,0,0\)/);
  assert.match(app,/ctx\.fillRect\(0,0,width,height\)/);
@@ -99,4 +99,33 @@ test('masked view becomes the full underlying overlay and supports cancellation'
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:relative/);
  assert.match(html,/class="container home-mini-footer"/);
+});
+
+test('the three journey cards replace redundant bottom actions',()=>{
+ const cards=[...markup.matchAll(/<a class="home-step ec-action-card"[^>]*>/g)].map(m=>m[0]);
+ assert.equal(cards.length,3,'the three on-screen cards must all be links');
+ assert.match(cards[0],/href="\/dashboard" data-ethical-route="dashboard"/);
+ assert.match(cards[1],/data-overlay-open="proof"/);
+ assert.match(cards[2],/data-overlay-open="rewards"/);
+ assert.doesNotMatch(markup,/class="overlay-actions"/,'do not duplicate cards as bottom CTAs');
+ assert.match(css,/\.ec-overlay-panel \.ec-action-card:focus-visible/);
+});
+test('reward card has an honest dedicated full-page explanation',()=>{
+ assert.match(markup,/id="ec-overlay-rewards"/);
+ assert.match(markup,/id="ec-rewards-title"/);
+ assert.match(markup,/There is no active cash-rewards programme/);
+ assert.match(markup,/IN DEVELOPMENT/);
+ assert.match(markup,/FUTURE CONCEPT/);
+ assert.match(app,/\['how','proof','products','rewards'\]/);
+});
+test('switching from a card replays the actual ETHICAL glyph-mask and seller store navigation uses it',()=>{
+ assert.match(app,/function ethicalRevealOrigin\(trigger\)/);
+ assert.match(app,/trigger\?\.closest\?\.\('\.ec-action-card'\)/);
+ assert.match(app,/const origin=ethicalRevealOrigin\(trigger\);/);
+ assert.match(app,/playEthicalTextMask\(host,panel,name,trigger,\{origin\}\)/);
+ assert.doesNotMatch(app,/if\(switching\|\|window\.matchMedia/,'nested navigation should no longer skip animation');
+ assert.match(app,/async function navigateWithEthicalMask\(to,trigger\)/);
+ assert.match(app,/await render\(\);\s*if\(!playEthicalTextMask\(null,null,'route',trigger/);
+ assert.match(app,/ctx\.globalCompositeOperation='destination-out'/);
+ assert.match(app,/document\.body\.append\(canvas\);\s*closeEthicalOverlay\(true\);/);
 });
