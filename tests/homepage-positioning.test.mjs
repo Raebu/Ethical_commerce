@@ -30,8 +30,8 @@ test('original home content moves to accessible overlay panels, not a long scrol
  assert.match(css,/html:has\(\.home-shell\)\{overflow:hidden\}/);
  assert.match(css,/\.ec-overlay-host\.is-open/);
  assert.doesNotMatch(markup,/class="ec-overlay-display"/);
- assert.match(css,/\.ec-zoom-flight\{/);
- assert.match(css,/\.ec-zoom-curtain\.is-revealing/);
+ assert.match(css,/\.ec-zoom-mask\{/);
+ assert.match(css,/\.ec-overlay-host\.ec-mask-stage\{/);
  assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:relative;top:0;bottom:auto/);
  assert.match(css,/body:has\(\.home-shell\) \.site-footer\{display:block/);
  assert.match(css,/body:has\(\.home-shell\) \.site-footer \.footer-grid/);
@@ -71,14 +71,32 @@ test('top header is preserved and the compact footer replaces lower homepage sec
  assert.match(app,/function navigate\(to\)\{closeEthicalOverlay\(true\);/);
 });
 
-test('ETHICAL enlarges from the homepage phrase slowly, never rests as a duplicate headline',()=>{
+test('ETHICAL is a genuine content-window mask, not an opaque flying word',()=>{
  assert.doesNotMatch(markup,/class="ec-overlay-display"/);
- assert.match(app,/document\.querySelector\('\.home-lead strong'\)/);
- assert.match(app,/word\.textContent='ETHICAL'/);
- assert.match(app,/duration:2700/);
- assert.match(app,/curtain\.classList\.add\('is-revealing'\)/);
- assert.match(app,/cancelEthicalZoom\(\)/);
- assert.match(css,/\.ec-zoom-flight\{/);
- assert.match(css,/\.ec-zoom-curtain\{/);
- assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(app,/function ethicalRevealOrigin\(\)/);
+ assert.match(app,/range\.setStart\(node,match\.index\)/);
+ assert.match(app,/range\.setEnd\(node,match\.index\+match\[0\]\.length\)/);
+ assert.match(app,/function playEthicalTextMask\(host,panel,name\)/);
+ assert.match(app,/ctx\.globalCompositeOperation='destination-out'/);
+ assert.match(app,/ctx\.fillText\(word,0,0\)/);
+ assert.match(app,/ctx\.fillRect\(0,0,width,height\)/);
+ assert.match(app,/const total=3800/);
+ assert.match(app,/endScale/);
+ assert.match(app,/host\.classList\.add\('ec-mask-stage'\)/);
+ assert.match(css,/\.ec-overlay-host\.ec-mask-stage\{/);
+ assert.match(css,/\.ec-zoom-mask\{/);
+ assert.doesNotMatch(app,/word\.className='ec-zoom-flight'/);
+ assert.doesNotMatch(css,/\.ec-zoom-flight\{/);
+ assert.doesNotMatch(css,/\.ec-zoom-curtain\{/);
+});
+test('masked view becomes the full underlying overlay and supports cancellation',()=>{
+ assert.match(app,/mask\.style\.opacity=String\(p<\.96/);
+ assert.match(app,/run\.mask\.remove\(\)/);
+ assert.match(app,/cancelAnimationFrame\(run\.frameId\)/);
+ assert.match(app,/function cancelEthicalZoom\(\)/);
+ assert.match(app,/window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
+ assert.match(app,/panel\.querySelector\('\.ec-overlay-close'\)\?\.focus/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(css,/body:has\(\.home-shell\) \.site-header\{position:relative/);
+ assert.match(html,/class="container home-mini-footer"/);
 });

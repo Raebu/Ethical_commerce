@@ -283,9 +283,9 @@ body:has(.home-shell) .home-visual-foot{padding-top:8px}
 body:has(.home-shell) .ec-home-openers{display:none}
 .ec-overlay-host{position:fixed;inset:0;z-index:25;pointer-events:none;opacity:0;visibility:hidden;background:#050505;transition:opacity .65s ease,visibility 0s linear .65s}
 .ec-overlay-host.is-open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .65s ease,visibility 0s}
-.ec-zoom-curtain{position:fixed;inset:0;z-index:35;background:#050505;pointer-events:none;opacity:1;transition:opacity .74s ease}
-.ec-zoom-curtain.is-revealing{opacity:0}
-.ec-zoom-flight{position:fixed;left:0;top:0;z-index:45;display:block;width:max-content;color:#d3ff5c;font-weight:950;line-height:1;white-space:nowrap;letter-spacing:-.075em;transform-origin:left top;pointer-events:none;will-change:transform,opacity}
+/* During the reveal the destination already exists; only actual glyphs can see it. */
+.ec-overlay-host.ec-mask-stage{opacity:1;visibility:visible;pointer-events:none;transition:none}
+.ec-zoom-mask{position:fixed;inset:0;z-index:45;width:100vw;height:100dvh;display:block;pointer-events:auto;will-change:opacity}
 .ec-overlay-panel{position:absolute;inset:0;background:#050505;color:#f7f8f2;overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#536540 #070707}
 .ec-overlay-panel[hidden]{display:none}
 .ec-overlay-top{height:72px;position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,74px);background:#050505f5;border-bottom:1px solid #30372a;color:#d3ff5c;font-size:.7rem;font-weight:840;letter-spacing:.12em}
@@ -356,7 +356,7 @@ body.ec-overlay-active{overflow:hidden!important}
  body:has(.home-shell) .ec-home-openers button{background:#101510;color:#d3ff5c;border:1px solid #435332;border-radius:8px;padding:8px}
 }
 @media(prefers-reduced-motion:reduce){
- .ec-overlay-host,.ec-overlay-host.is-open,.ec-zoom-curtain,.ec-zoom-flight{transition:none!important;animation:none!important}
+ .ec-overlay-host,.ec-overlay-host.is-open,.ec-overlay-host.ec-mask-stage,.ec-zoom-mask{transition:none!important;animation:none!important}
 }
 
 /* Restore original top masthead; compact functional footer replaces the discarded long page. */
