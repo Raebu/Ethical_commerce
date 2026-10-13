@@ -11,31 +11,40 @@ const homepage=app.slice(begin,end);
 const afterAssignment=homepage.split('main.innerHTML=')[1];
 const markup=JSON.parse(afterAssignment.slice(0,afterAssignment.indexOf(';\n await loadCatalog')));
 
-test('the first screen says what the product is and tells sellers what to do',()=>{
- const headline=markup.indexOf('ethical dropshipping store.');
- const action=markup.indexOf('Create your store');
- const productCatalog=markup.indexOf('id="discover"');
- assert.ok(headline>=0,'must clearly say ethical dropshipping store');
- assert.ok(action>headline,'lead with the primary seller CTA');
- assert.ok(productCatalog>action,'do not put the shopper catalogue before the offer');
- assert.match(markup,/href="\/dashboard" data-link/,'seller CTA must point to a working Seller Studio');
+test('first screen leads with an ethical-rewards question and explains exactly what can be built',()=>{
+ assert.ok(markup.indexOf('WHAT IF DOING')>=0,'ethical hook must be immediate');
+ assert.ok(markup.indexOf('GOOD</span> ACTUALLY')>=0,'first-screen reward hook present');
+ const explanation=markup.indexOf('ethical dropshipping store');
+ const button=markup.indexOf('Create your store');
+ const catalogue=markup.indexOf('id="discover"');
+ assert.ok(explanation>=0&&explanation<button&&catalogue>button,'seller explanation and action must precede shopper catalogue');
+ assert.match(markup,/href="\/dashboard" data-link/,'seller CTA must reach real Seller Studio');
 });
 
-test('no false claims about unlaunched payment and fulfilment tools',()=>{
- assert.match(markup,/from where it starts to how it reaches your customer/);
- assert.match(markup,/Payment-split reporting: in development/);
- assert.match(markup,/automatic fulfilment, live checkout and payment-split reporting are not yet active/);
- assert.match(markup,/ILLUSTRATIVE PREVIEW/);
- assert.match(markup,/Declarations are not independent verification/);
+test('future rewards and money-flow features are not misrepresented as operational',()=>{
+ assert.match(markup,/Reward payments and payment-split reporting are/);
+ assert.match(markup,/in development/);
+ assert.match(markup,/not available yet/);
+ assert.match(markup,/REWARDS &amp; PAYMENT INSIGHTS: PLANNED/);
+ assert.match(markup,/ILLUSTRATIVE|CONCEPT PREVIEW/);
+ assert.match(markup,/seller declaration is not independent verification/);
+ assert.match(markup,/Live checkout and automated fulfilment are also disabled/);
 });
 
-test('page remains usable by shoppers and at mobile widths',()=>{
+test('public homepage is black with electric accent while merchant dashboard remains scoped out',()=>{
+ assert.match(html,/<meta name="theme-color" content="#000000">/);
+ assert.match(css,/body:has\(\.home-shell\).*background:#000!important/);
+ assert.match(css,/\.home-hero h1\{[^}]*color:#f7f7f4/);
+ assert.match(css,/\.home-hero h1 span[^}]*color:#d3ff5c/);
+ assert.ok(!css.includes('body{background:#000!important}'),'do not invert merchant forms and dashboard globally');
+ assert.match(css,/@media\(max-width:650px\)/);
+ assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+});
+
+test('public shopping and product-passport navigation remain present',()=>{
  assert.match(app,/async function loadCatalog/);
  assert.match(markup,/id="catalog"/);
  assert.match(markup,/id="how-it-works"/);
- assert.match(html,/Create your ethical dropshipping store/);
+ assert.match(markup,/href="\/about" data-link/);
  assert.match(html,/Create your store/);
- assert.match(css,/\.home-hero\{/);
- assert.match(css,/@media\(max-width:650px\)/);
- assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 });
