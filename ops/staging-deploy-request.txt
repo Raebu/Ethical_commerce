@@ -16,3 +16,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-12: Deploy verified seller email entry/pending workflow PR #21 and migration 0006 to isolated staging only. Keep checkout disabled, retain all staging secrets.
 
 2026-10-12: Deploy PR #22 to isolated Ethical Commerce staging to synchronize EMAIL_FROM public variable with Cloudflare Worker. Keep Resend key secret and all payment/sales flags off.
+
+2026-10-13: Deploy seller-first ethical dropshipping homepage (PR #23) to isolated staging only. No payment/sales/notifications/publishing flags changed.
