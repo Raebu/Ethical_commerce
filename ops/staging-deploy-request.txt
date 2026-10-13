@@ -24,3 +24,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy PR #25 one-screen black Ethical Commerce homepage, fixed bottom navigation and ethical zoom overlay dialogs to isolated staging. Keep sales, checkout, notifications, publishing disabled.
 
 2026-10-13: Deploy PR #26 correcting top masthead and compact footer for Ethical Commerce one-screen public homepage, preserving immersive overlays. Staging only. No payment flags changed.
+
+2026-10-13: Deploy PR #27 home footer zero-padding alignment on isolated staging. Keep seller studio and payment flags unchanged.
