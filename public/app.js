@@ -345,7 +345,9 @@ const ETHICAL_MASK_WORDS=Object.freeze({
  proof:'TRUST',
  rewards:'IMPACT',
  products:'DISCOVER',
- route:'CREATE'
+ dashboard:'CREATE',
+ sell:'BUILD',
+ about:'HONEST'
 });
 let ethicalOverlayTrigger=null;
 let ethicalOverlayName='';
@@ -511,7 +513,8 @@ async function openEthicalOverlay(name,trigger){
  if(name==='products')await loadCatalog('');
 }
 async function navigateWithEthicalMask(to,trigger){
- if(to!=='/dashboard')return;
+ if(!['/dashboard','/sell','/about'].includes(to))return;
+ const maskName=to.slice(1);
  const origin=ethicalRevealOrigin(trigger);
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!origin){navigate(to);return}
  cancelEthicalZoom();
@@ -532,7 +535,7 @@ async function navigateWithEthicalMask(to,trigger){
  window.scrollTo(0,0);
  try{
   await render();
-  if(!playEthicalTextMask(null,null,'route',trigger,{
+  if(!playEthicalTextMask(null,null,maskName,trigger,{
    origin,canvas,onComplete:()=>main.focus({preventScroll:true})
   })){
    canvas.remove();
