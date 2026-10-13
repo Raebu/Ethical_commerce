@@ -73,7 +73,7 @@ test('top header is preserved and the compact footer replaces lower homepage sec
 
 test('ETHICAL is a genuine content-window mask, not an opaque flying word',()=>{
  assert.doesNotMatch(markup,/class="ec-overlay-display"/);
- assert.match(app,/function ethicalRevealOrigin\(\)/);
+ assert.match(app,/function ethicalRevealOrigin\(trigger\)/);
  assert.match(app,/range\.setStart\(node,match\.index\)/);
  assert.match(app,/range\.setEnd\(node,match\.index\+match\[0\]\.length\)/);
  assert.match(app,/function playEthicalTextMask\(host,panel,name,trigger,options=\{\}\)/);
