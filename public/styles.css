@@ -256,7 +256,7 @@ body:has(.home-shell) .home-cta-panel .btn-light:hover{background:#29381d;color:
 /* Ethical Commerce kiosk home: one visual screen, bottom navigation, immersive views. */
 html:has(.home-shell){overflow:hidden}
 body:has(.home-shell){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
-body:has(.home-shell) .site-footer{display:block;flex:0 0 auto;background:#000;border-top:1px solid #262626;color:#bec7ba}
+body:has(.home-shell) .site-footer{display:block;flex:0 0 auto;padding:0;background:#000;border-top:1px solid #262626;color:#bec7ba}
 body:has(.home-shell) .site-header{position:relative;top:0;bottom:auto;left:auto;right:auto;flex:0 0 auto;z-index:15;border-top:0;border-bottom:1px solid #272a26;background:#000}
 body:has(.home-shell) .header-inner{min-height:68px}
 body:has(.home-shell) .header-inner .logo{width:43px;height:43px;border-radius:13px;font-size:1.7rem}
