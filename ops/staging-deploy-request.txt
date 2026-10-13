@@ -32,3 +32,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy PR #29 expanding ETHICAL glyph-cutout content reveal (real destination visible only through text, 3.8s mask zoom, reduced-motion fallback). Isolated staging only; payment, checkout, sales, notifications and publishing flags unchanged.
 
 2026-10-13: Deploy PR #30 clickable How It Works cards, no duplicate bottom CTA buttons, card-to-page authentic ETHICAL text-mask transitions, distinct honest rewards overlay and direct Seller Studio link. Isolated staging only; all payments, live sales, publishing, notifications remain disabled.
+
+2026-10-13: Deploy PR #31 distinct destination mask words ETHICAL/TRUST/IMPACT/DISCOVER/CREATE/BUILD/HONEST and consistent black/lime seller, standards, admin and account UI. Preserve current /shop/*, /product/*, /order-result buyer visual design and disabled payment/sales/publishing flags. Staging only.
