@@ -34,3 +34,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy PR #30 clickable How It Works cards, no duplicate bottom CTA buttons, card-to-page authentic ETHICAL text-mask transitions, distinct honest rewards overlay and direct Seller Studio link. Isolated staging only; all payments, live sales, publishing, notifications remain disabled.
 
 2026-10-13: Deploy PR #31 distinct destination mask words ETHICAL/TRUST/IMPACT/DISCOVER/CREATE/BUILD/HONEST and consistent black/lime seller, standards, admin and account UI. Preserve current /shop/*, /product/*, /order-result buyer visual design and disabled payment/sales/publishing flags. Staging only.
+
+2026-10-14: Deploy PR #32 living supply chain, interactive money trail, opt-in supplier directory, guided store creator, published product QR passports, evidence/activity dashboard and staged launch checklist. Apply migration 0007 to STAGING ONLY. Leave live payments, publishing, fulfilment automation, rewards OFF.
