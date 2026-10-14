@@ -1,3 +1,4 @@
+import {journeyMarkup,moneyMarkup,supplierDirectoryMarkup,impactMarkup,wizardMarkup,updateWizardPreview,updateDemoMoney,MONEY_LABELS} from './experience.js';
 const main=document.querySelector('#main');
 const toast=document.querySelector('#toast');
 const state={user:null,stores:[],storeId:localStorage.getItem('ec-store')||'',tab:'overview',selectedProduct:'',editProduct:null,lastEvidenceId:'',authMode:'register',salesEnabled:false,orderAccess:null};
@@ -86,6 +87,10 @@ async function passport(productId){
  const d=await api('/api/public/products/'+encodeURIComponent(productId)),p=d.product;
  const claims=d.claims||[],events=d.events||[],cov=d.coverage;
  main.innerHTML='<div class="container"><div class="page-head"><a href="/" data-link class="small">← Back to discover</a><p class="eyebrow" style="margin:20px 0 8px">Product transparency passport</p></div><article class="detail"><div class="detail-top"><div class="detail-visual">'+art(p.image_url,p.name)+'</div><div class="detail-copy"><span class="pill">'+h(p.category||'Product')+'</span><h1>'+h(p.name)+'</h1><p>'+h(p.description||'No description provided.')+'</p><p class="price">'+h(price(p.price_minor,p.currency))+'</p><p><strong>Seller:</strong> '+h(p.store_name)+'<br><strong>Supplier:</strong> '+h(p.supplier_name||'Not disclosed')+'<br><strong>Supplier country:</strong> '+h(p.supplier_country||'Not disclosed')+'</p>'+currencyNotice+'</div></div></article><section class="section"><div class="section-heading"><div><span class="eyebrow">Evidence ledger</span><h2>What can we actually verify?</h2><p>Submitted statements are not automatically independent audits or certifications.</p></div></div>'+ (claims.length?'<div class="evidence-grid">'+claims.map(c=>'<article class="evidence-entry"><div class="row"><strong>'+h(c.facet)+'</strong><span class="spacer"></span>'+badge(c.evidence_status||'missing')+'</div><p>'+h(c.statement)+'</p><div class="small muted">Document: '+h(c.evidence_title||'Not supplied')+'<br>Issuer: '+h(c.issuer||'Unknown')+'</div>'+(image(c.source_url)?'<p><a href="'+h(image(c.source_url))+'" target="_blank" rel="noopener noreferrer">View external source ↗</a></p>':'')+'</article>').join('')+'</div>':noData('No supporting claims published','The seller has not submitted evidence-backed claims for this product. Do not assume it meets any ethical standard.'))+'</section><section class="section"><div class="section-heading"><div><span class="eyebrow">End to end</span><h2>Supply-chain journey</h2><p>'+h(cov.covered)+' of '+h(cov.total)+' disclosure milestones recorded. This is a completeness indicator, not an ethical rating.</p></div></div>'+(cov.missing.length?'<div class="notice">Missing milestones: '+h(cov.missing.join(', '))+'. These gaps have not been independently resolved.</div>':'<div class="notice green">All core milestones have entries. This does not confirm their accuracy.</div>')+(events.length?'<div class="panel" style="margin-top:18px"><div class="timeline">'+events.map(ev=>'<div class="timeline-item"><strong>'+h(ev.stage)+' · '+h(ev.actor_name)+'</strong><p>'+h(ev.place||'Location not provided')+' · '+h(ev.happened_at)+'</p><p>'+badge(ev.evidence_status||'missing')+' '+h(ev.evidence_title||'No linked evidence')+'</p></div>').join('')+'</div></div>':noData('No journey records yet','The supplier has not supplied a traceable production history.'))+'</section><section class="section"><div class="panel"><h2>Raise a concern</h2><p class="muted">Have information about a misleading claim, product safety or environmental harm? Reports go to authorised seller staff. Do not submit confidential worker information: an independent protected whistleblower channel is not yet available.</p><form data-action="report" class="form"><input type="hidden" name="productId" value="'+h(p.id)+'"><label>Concern category<select name="category" required><option value="misleading_claim">Misleading claim</option><option value="product_safety">Product safety</option><option value="animal_welfare">Animal welfare</option><option value="environment">Environment</option><option value="other">Other</option></select></label><label>Details<textarea name="message" rows="4" minlength="20" maxlength="2000" required></textarea></label><label>Email (optional)<input class="input" type="email" name="contactEmail" placeholder="For follow-up only"></label><button class="btn btn-dark">Submit concern</button></form></div></section></div>';
+ const concernForm=main.querySelector('form[data-action="report"]');
+ concernForm?.closest('section')?.insertAdjacentHTML('beforebegin',
+  '<section class="section"><div class="ec-x-passport-tools"><strong>Digital product passport</strong><button class="btn btn-soft" type="button" data-copy-passport="'+h(p.id)+'">Copy passport link ↗</button><button class="btn btn-light" type="button" data-print-passport>Print passport</button></div></section>'+
+  journeyMarkup(d,h)+moneyMarkup(d,h));
  try{
   const [hinfo,sellerInfo]=await Promise.all([api('/api/health'),api('/api/commerce/public/sellers/'+encodeURIComponent(p.store_slug))]);
   const info=sellerInfo.seller||{},target=main.querySelector('.detail-copy');
@@ -131,14 +136,12 @@ function landing(type){
 function auth(){
  main.innerHTML='<div class="container"><div class="auth-shell"><span class="eyebrow">Merchant access</span><h1>Seller Studio.</h1><p class="muted">Manage products, suppliers and the evidence behind every claim.</p><div class="panel"><form class="form" data-action="'+h(state.authMode)+'"><h2>'+ (state.authMode==='register'?'Create your account':'Welcome back')+'</h2><label>Email<input class="input" name="email" type="email" required autocomplete="email"></label><label>Password<input class="input" name="password" type="password" minlength="12" maxlength="128" required autocomplete="'+(state.authMode==='register'?'new-password':'current-password')+'"><span class="field-hint">12 characters minimum. This is a staging environment. Verify your email and complete seller identity checks before onboarding. Do not enter real customer data.</span></label><button class="btn btn-dark">'+(state.authMode==='register'?'Create account':'Sign in')+'</button><button class="btn btn-soft" type="button" data-op="toggle-auth">'+(state.authMode==='register'?'Already registered? Sign in':'Need an account? Register')+'</button></form></div></div></div>';
 }
-function createStore(){
- main.innerHTML='<div class="container"><div class="auth-shell"><span class="eyebrow">Welcome to Seller Studio</span><h1>Start with your store.</h1><p class="muted">Create a name and permanent shop address. Your account can operate multiple separate stores.</p><div class="panel"><form class="form" data-action="store"><label>Store name<input class="input" name="name" maxlength="100" required placeholder="e.g. Fair Goods Collective"></label><label>Store URL slug (optional)<input class="input" name="slug" maxlength="70" placeholder="fair-goods-collective"></label><button class="btn btn-dark">Create store →</button></form></div></div></div>';
-}
+function createStore(){main.innerHTML=wizardMarkup(h);}
 function input(name,label,value='',kind='text',extra=''){return '<label>'+h(label)+'<input class="input" name="'+h(name)+'" type="'+h(kind)+'" value="'+h(value)+'" '+extra+'></label>'}
 function field(name,label,value='',rows=3){return '<label>'+h(label)+'<textarea name="'+h(name)+'" rows="'+rows+'">'+h(value)+'</textarea></label>'}
 function storeSelect(){return '<label class="small">Working store<select id="store-select" class="layout-select" aria-label="Select store">'+state.stores.map(s=>'<option value="'+h(s.id)+'" '+(s.id===state.storeId?'selected':'')+'>'+h(s.name)+'</option>').join('')+'</select></label>'}
 function panel(title,body){return '<div class="panel"><div class="section-title"><h2>'+h(title)+'</h2></div>'+body+'</div>'}
-const tabs=[['overview','Overview'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['commerce','Verified selling'],['orders','Orders & returns'],['supplier-orders','Supplier orders'],['integrations','Store connections'],['reports','Concerns'],['settings','Store settings']];
+const tabs=[['overview','Overview'],['money','Money trail'],['impact','Impact & evidence'],['directory','Supplier directory'],['readiness','Launch checklist'],['products','Products'],['suppliers','Suppliers'],['passport','Traceability'],['channels','Sales channels'],['commerce','Verified selling'],['orders','Orders & returns'],['supplier-orders','Supplier orders'],['integrations','Store connections'],['reports','Concerns'],['settings','Store settings']];
 async function dashboard(){
  if(!state.user){auth();return}
  if(!state.stores.length){createStore();return}
@@ -152,6 +155,10 @@ async function dashboard(){
    const s=await api('/api/stats?storeId='+encodeURIComponent(state.storeId));
    work.innerHTML='<div class="stats">'+[['Products',s.products],['Suppliers',s.suppliers],['Claims',s.claims],['Open concerns',s.openReports]].map(([l,n])=>'<div class="stat"><b>'+h(n)+'</b><small>'+h(l)+'</small></div>').join('')+'</div>'+panel('Your ethical commerce workspace','<p class="muted">Add products, connect each to a supplier, attach meaningful evidence and record the production journey. Use the CSV export to prepare external sales channels.</p><div class="row"><button class="btn btn-dark" data-tab="products">Manage products →</button><button class="btn btn-soft" data-tab="passport">Build a product passport</button></div>')+panel('Current launch readiness','<div class="notice"><strong>Preview — transactions disabled.</strong> Payment collection, real supplier order routing and automated external marketplace posting have not been activated. No merchant should treat this as a production selling system yet.</div>');
   }
+  if(state.tab==='money')await merchantMoney(work);
+  if(state.tab==='impact')await merchantImpact(work);
+  if(state.tab==='directory')await merchantSupplierDirectory(work);
+  if(state.tab==='readiness')await merchantReadiness(work);
   if(state.tab==='products')await products(work);
   if(state.tab==='suppliers')await suppliers(work);
   if(state.tab==='passport')await traceability(work);
@@ -163,6 +170,82 @@ async function dashboard(){
   if(state.tab==='integrations')await connections(work);
   if(state.tab==='settings')settings(work,store);
  }catch(e){work.innerHTML=noData('Unable to load section',e.message)}
+}
+async function merchantMoney(work){
+ const products=await api('/api/products?storeId='+encodeURIComponent(state.storeId));
+ const p=products.products.find(x=>x.id===state.selectedProduct)||products.products[0];
+ if(!p){work.innerHTML=noData('Create a product first','Money disclosures belong to a specific product. Nothing is automatically public.');return}
+ state.selectedProduct=p.id;
+ const record=await api('/api/products/'+encodeURIComponent(p.id)+'/money');
+ const rows=record.records||[];
+ const options=Object.keys(MONEY_LABELS).map(key=>'<option value="'+h(key)+'">'+h(MONEY_LABELS[key])+'</option>').join('');
+ work.innerHTML=panel('Money trail — your choice what to disclose',
+  '<p class="muted">You are entering illustrative or actual numbers yourself. We do not move money or verify the accuracy. Public opt-in is optional, and individual amounts may be commercially sensitive.</p>'+
+  '<label>Product<select id="money-product-select">'+products.products.map(x=>'<option value="'+h(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+h(x.name)+'</option>').join('')+'</select></label>'+
+  '<form class="form" data-action="money-disclosure"><label>Cost category<select name="category" required>'+options+'</select></label>'+
+  input('amount','Amount in GBP (seller-declared)','0.00','number','required min="0" step="0.01" max="1000000"')+
+  input('evidenceUrl','Optional public evidence HTTPS link','','url')+field('note','What does this amount include?','')+
+  '<label><input type="checkbox" name="publicConsent"> I expressly agree to make this category, amount, note and evidence link public on the product passport.</label>'+
+  '<button class="btn btn-dark">Save declaration</button><p class="small muted">Unchecked means private. Update any category and save again to change its public status.</p></form>')+
+  panel('Current declared amounts',
+  rows.length?'<div class="stack">'+rows.map(r=>'<div class="evidence-entry"><strong>'+h(MONEY_LABELS[r.category]||r.category)+' · '+h(price(r.amount_minor))+'</strong><p>'+h(r.note||'No explanation')+'</p><span class="badge '+(r.public_consent?'':'warn')+'">'+(r.public_consent?'Opted-in public':'Private — not published')+'</span></div>').join('')+'</div>':noData('No cost disclosures','You decide which cost categories to record or voluntarily publish.'))+
+  moneyMarkup({product:p,money:record.money},h);
+}
+async function merchantImpact(work){
+ const d=await api('/api/stores/'+encodeURIComponent(state.storeId)+'/impact');
+ work.innerHTML=impactMarkup(d.impact,h)+panel('Next useful evidence','<p class="muted">Record every production handoff, attach verifiable source URLs, address concerns, and distinguish seller declarations from independent assessments. These activity counters are not rewards or a sustainability rating.</p><button class="btn btn-dark" data-tab="passport">Work on a product passport →</button>');
+}
+async function merchantSupplierDirectory(work){
+ const d=await api('/api/suppliers?storeId='+encodeURIComponent(state.storeId));
+ const supplier=d.suppliers.find(x=>x.id===state.selectedSupplier)||d.suppliers[0];
+ if(!supplier){work.innerHTML=noData('Add suppliers before publishing a profile','Your private supplier notes will never be listed in the directory.');return}
+ state.selectedSupplier=supplier.id;
+ const profile=await api('/api/suppliers/'+encodeURIComponent(supplier.id)+'/public-profile');
+ const p=profile.profile||{};
+ work.innerHTML=panel('Public supplier listing (explicit opt-in)',
+  '<div class="notice">Only publish supplier details you have permission to disclose. Private supplier risk notes and ordering contacts never appear in the directory. A listing is not approval or certification.</div>'+
+  '<label>Registered supplier<select id="directory-supplier-select">'+d.suppliers.map(x=>'<option value="'+h(x.id)+'" '+(x.id===supplier.id?'selected':'')+'>'+h(x.name)+'</option>').join('')+'</select></label>'+
+  '<form data-action="supplier-public-profile" class="form">'+field('description','Public supplier description',p.description||'')+
+  input('categories','Categories (comma separated)',p.categories||'')+
+  input('evidenceUrl','Optional public HTTPS evidence link',p.evidence_url||'','url')+
+  field('fulfillmentNotes','Public fulfilment details (merchant statement)',p.fulfillment_notes||'')+
+  '<label><input type="checkbox" name="publicConsent" '+(p.public_consent?'checked':'')+'> I have authority to publish the disclosed supplier information.</label>'+
+  '<button class="btn btn-dark">Save supplier profile</button></form>')+
+  panel('Directory visibility','<p class="muted">Current status: <strong>'+(p.public_consent?'Opted in and discoverable':'Private')+'</strong>. Check or uncheck consent and save to change visibility.</p><a class="btn btn-light" href="/suppliers" data-link>View public supplier directory ↗</a>');
+}
+async function merchantReadiness(work){
+ const [products,suppliers,email,details]=await Promise.all([
+  api('/api/products?storeId='+encodeURIComponent(state.storeId)),
+  api('/api/suppliers?storeId='+encodeURIComponent(state.storeId)),
+  api('/api/auth/email/status'),api('/api/commerce/stores/'+encodeURIComponent(state.storeId)+'/compliance')
+ ]);
+ const c=details.compliance||{};
+ const checks=[
+  ['Account email',!!email.verified,'commerce'],
+  ['Seller policies',!!(c.legal_seller_name&&c.terms_url&&c.privacy_url&&c.return_policy_url&&c.shipping_policy_url),'commerce'],
+  ['Products recorded',products.products.length>0,'products'],
+  ['Suppliers recorded',suppliers.suppliers.length>0,'suppliers'],
+  ['Products linked to suppliers',products.products.some(p=>p.supplier_id),'passport'],
+  ['Traceability evidence',false,'passport'],
+  ['Sandbox checkout',false,'commerce'],
+  ['Live payments, external publishing and rewards',false,'channels']
+ ];
+ work.innerHTML=panel('Transparent launch checklist',
+  '<p class="muted">Preparation status, not an authorisation to trade. Payment, marketplace, identity and consumer-rights approval gates must all pass independently.</p>'+
+  '<div class="stack">'+checks.map(([label,ok,tab])=>'<button type="button" class="ec-x-check" data-tab="'+tab+'"><span>'+(ok?'✓':'○')+'</span><strong>'+h(label)+'</strong><small>'+(ok?'Recorded':'Requires review or further work')+' →</small></button>').join('')+'</div>')+
+  panel('System trading controls','<div class="notice">Live customer payments, automatic supplier fulfilment, sales publishing and monetary rewards remain disabled. Passing the checklist never automatically enables these features.</div>');
+}
+async function supplierDirectoryPage(){
+ document.body.dataset.ecTheme='dark';
+ main.innerHTML='<div class="container ec-x-directory-page" id="ec-directory-mount">'+supplierDirectoryMarkup([],h)+'</div>';
+ await loadSupplierDirectory('');
+}
+async function loadSupplierDirectory(q,target='#ec-x-supplier-results'){
+ const data=await api('/api/public/suppliers?q='+encodeURIComponent(q||''));
+ const wrap=document.querySelector(target);
+ if(!wrap)return;
+ const doc=new DOMParser().parseFromString(supplierDirectoryMarkup(data.suppliers,h),'text/html');
+ wrap.innerHTML=doc.querySelector('#ec-x-supplier-results')?.innerHTML||'';
 }
 async function products(work){
  const [data,ss]=await Promise.all([api('/api/products?storeId='+state.storeId),api('/api/suppliers?storeId='+state.storeId)]);
@@ -323,6 +406,7 @@ async function render(){
    ?'shop':pathname==='/'?'home':'dark';
   if(pathname==='/'){await discover();return}
   if(pathname==='/about'||pathname==='/sell'){landing(pathname.slice(1));return}
+  if(pathname==='/suppliers'){await supplierDirectoryPage();return}
   if(pathname==='/verify'){await verificationPage();return}
   if(pathname==='/order-result'){await orderResult();return}
   if(pathname==='/operator'){
@@ -510,7 +594,10 @@ async function openEthicalOverlay(name,trigger){
   host.classList.add('is-open');
   panel.querySelector('.ec-overlay-close')?.focus({preventScroll:true});
  }
- if(name==='products')await loadCatalog('');
+ if(name==='proof'&&!panel.querySelector('.ec-x-journey'))panel.querySelector('.ec-overlay-content')?.insertAdjacentHTML('beforeend',journeyMarkup(null,h,{demo:true}));
+ if(name==='rewards'&&!panel.querySelector('.ec-x-money'))panel.querySelector('.ec-overlay-content')?.insertAdjacentHTML('beforeend',moneyMarkup(null,h,{demo:true}));
+ if(name==='products'&&!panel.querySelector('.ec-x-suppliers'))panel.querySelector('.ec-overlay-content')?.insertAdjacentHTML('beforeend',supplierDirectoryMarkup([],h));
+ if(name==='products'){await Promise.all([loadCatalog(''),loadSupplierDirectory('')]);}
 }
 async function navigateWithEthicalMask(to,trigger){
  if(!['/dashboard','/sell','/about'].includes(to))return;
@@ -565,6 +652,24 @@ document.addEventListener('click',async e=>{
   await navigateWithEthicalMask(actionCard.getAttribute('href'),actionCard);
   return;
  }
+ const share=e.target.closest('[data-copy-passport]');
+ if(share){
+  try{await navigator.clipboard.writeText(location.origin+'/product/'+encodeURIComponent(share.dataset.copyPassport));flash('Passport link copied');}
+  catch{flash('Copy the page URL from your address bar to share this passport.');}
+  return;
+ }
+ if(e.target.closest('[data-print-passport]')){window.print();return}
+ const wizardNext=e.target.closest('[data-wizard-next],[data-wizard-back]');
+ if(wizardNext){
+  const form=wizardNext.closest('form'),current=wizardNext.closest('[data-wizard-step]');
+  if(wizardNext.hasAttribute('data-wizard-next')){
+   for(const control of current.querySelectorAll('input,textarea,select'))if(!control.checkValidity()){control.reportValidity();return}
+  }
+  const target=wizardNext.dataset.wizardNext||wizardNext.dataset.wizardBack;
+  form.querySelectorAll('[data-wizard-step]').forEach(el=>el.hidden=el.dataset.wizardStep!==target);
+  form.querySelector('[data-wizard-step="'+target+'"] input')?.focus();
+  return;
+ }
  const overlayOpen=e.target.closest('[data-overlay-open]');
  if(overlayOpen&&location.pathname==='/'){e.preventDefault();await openEthicalOverlay(overlayOpen.dataset.overlayOpen,overlayOpen);return}
  if(e.target.closest('[data-overlay-close]')){e.preventDefault();closeEthicalOverlay();return}
@@ -616,12 +721,33 @@ document.addEventListener('click',async e=>{
 document.addEventListener('change',async e=>{
  if(e.target.id==='store-select'){state.storeId=e.target.value;state.selectedProduct='';state.editProduct=null;await dashboard()}
  if(e.target.id==='passport-select'){state.selectedProduct=e.target.value;await dashboard()}
+ if(e.target.id==='money-product-select'){state.selectedProduct=e.target.value;await dashboard()}
+ if(e.target.id==='directory-supplier-select'){state.selectedSupplier=e.target.value;await dashboard()}
+});
+document.addEventListener('input',e=>{
+ if(e.target.closest('.ec-x-wizard-form'))updateWizardPreview(e.target.closest('form'));
+ if(e.target.id==='ec-demo-money-slider')updateDemoMoney(e.target.value);
 });
 document.addEventListener('submit',async e=>{
  const f=e.target.closest('form[data-action]');if(!f)return;e.preventDefault();
  const act=f.dataset.action;const data=Object.fromEntries(new FormData(f).entries());
  const btn=f.querySelector('button[type=submit],button:not([type])');if(btn)btn.disabled=true;
  try{
+  if(act==='supplier-search'){await loadSupplierDirectory(data.q||'');return}
+  if(act==='money-disclosure'){
+   const amt=Number(data.amount);
+   if(!Number.isFinite(amt)||amt<0||Math.round(amt*100)>100000000)throw Error('Enter a valid non-negative amount');
+   await post('/api/products/'+encodeURIComponent(state.selectedProduct)+'/money',{
+    category:data.category,amountMinor:Math.round(amt*100),note:data.note,
+    evidenceUrl:data.evidenceUrl,publicConsent:data.publicConsent==='on'});
+   flash('Money declaration saved. Publication depends on your opt-in.');await dashboard();return;
+  }
+  if(act==='supplier-public-profile'){
+   await post('/api/suppliers/'+encodeURIComponent(state.selectedSupplier)+'/public-profile',{
+    description:data.description,categories:data.categories,evidenceUrl:data.evidenceUrl,
+    fulfillmentNotes:data.fulfillmentNotes,publicConsent:data.publicConsent==='on'});
+   flash('Supplier profile updated');await dashboard();return;
+  }
   if(act==='supplier-order-settings'){
    await post('/api/commerce/stores/'+state.storeId+'/supplier-order-settings',{supplierId:data.supplierId,orderingEmail:data.orderingEmail,confirmSupplierContact:data.confirmSupplierContact==='on'});
    flash('Supplier contact authorised by merchant');await dashboard();return
@@ -697,7 +823,15 @@ document.addEventListener('submit',async e=>{
   }
   if(act==='search'){await loadCatalog(data.q||'');return}
   if(act==='register'||act==='login'){await post('/api/auth/'+act,data);flash('Signed in');navigate('/dashboard');return}
-  if(act==='store'){const result=await post('/api/stores',data);state.storeId=result.id;flash('Store created');navigate('/dashboard');return}
+  if(act==='store'){
+   const result=await post('/api/stores',{name:data.name,slug:data.slug});
+   state.storeId=result.id;
+   if(data.description||data.themeColor){
+    try{await post('/api/stores/'+result.id,{name:data.name,description:data.description||'',themeColor:data.themeColor||'#256b59'},'PATCH')}
+    catch{flash('Store created, but design details could not be saved. Edit them in Store settings.')}
+   }
+   navigate('/dashboard');return;
+  }
   if(act==='product'||act==='edit-product'){
    const body={name:data.name,description:data.description,category:data.category,imageUrl:data.imageUrl,supplierId:data.supplierId,priceMinor:Math.round(Number(data.price)*100),stock:Number(data.stock),storeId:state.storeId};
    if(act==='product')await post('/api/products',body);else await post('/api/products/'+data.productId,body,'PATCH');
