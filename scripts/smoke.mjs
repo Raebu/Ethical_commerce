@@ -77,14 +77,55 @@ try{
  const product=await call('/api/products',{method:'POST',token:cookie,body:{storeId,name:'Cotton Tote',priceMinor:1900,stock:5,supplierId:supplier.data.id}});
  assert.equal(product.code,201,JSON.stringify(product.data));const productId=product.data.id;
  assert.equal((await call('/api/public/products/'+productId)).code,404);
+ assert.equal((await call('/api/public/products/'+productId+'/qr.svg')).code,404,'Unpublished product QR must be unavailable');
  const ev=await call('/api/evidence',{method:'POST',token:cookie,body:{productId,title:'Origin declaration',issuer:'Merchant',sourceUrl:'https://example.org/source'}});
  assert.equal(ev.code,201);assert.equal(ev.data.status,'supplier_declared');
  assert.equal((await call('/api/claims',{method:'POST',token:cookie,body:{productId,facet:'origin',statement:'Supplier declares UK origin',evidenceId:ev.data.id}})).code,201);
  assert.equal((await call('/api/trace',{method:'POST',token:cookie,body:{productId,stage:'source',actorName:'Supplier',happenedAt:'2026-10-10',evidenceId:ev.data.id}})).code,201);
  assert.equal((await call('/api/products/'+productId,{method:'PATCH',token:cookie,body:{status:'published'}})).code,200);
  const pub=await call('/api/public/products/'+productId);assert.equal(pub.code,200);
+ const qr=await call('/api/public/products/'+productId+'/qr.svg');
+ assert.equal(qr.code,200);
+ assert.match(qr.headers.get('content-type')||'',/image\/svg\+xml/);
+ assert.match(qr.data,/<svg/);
+ assert.doesNotMatch(qr.data,/<script/);
+ assert.equal(qr.headers.get('cache-control'),'no-store');
  assert.equal(pub.data.claims[0].evidence_status,'supplier_declared');assert.equal(pub.data.coverage.covered,1);
  assert.ok(pub.data.coverage.missing.includes('manufacture'));
+ // Money and supplier directory stay private until a merchant explicitly opts in.
+ const moneyBefore=await call('/api/products/'+productId+'/money',{token:cookie});
+ assert.equal(moneyBefore.code,200);assert.equal(moneyBefore.data.records.length,0);
+ const privateCost=await call('/api/products/'+productId+'/money',{method:'POST',token:cookie,body:{
+  category:'materials',amountMinor:450,note:'Confidential supplier cost',publicConsent:false
+ }});
+ assert.equal(privateCost.code,201);
+ const noLeak=await call('/api/public/products/'+productId);
+ assert.equal(noLeak.code,200);assert.equal(noLeak.data.money.entries.length,0);
+ assert.equal(JSON.stringify(noLeak.data).includes('Confidential supplier cost'),false);
+ const publicCost=await call('/api/products/'+productId+'/money',{method:'POST',token:cookie,body:{
+  category:'materials',amountMinor:450,note:'Seller-reported materials allocation',publicConsent:true
+ }});
+ assert.equal(publicCost.code,201);
+ const moneyPublic=await call('/api/public/products/'+productId);
+ assert.equal(moneyPublic.data.money.entries.length,1);
+ assert.equal(moneyPublic.data.money.disclosedMinor,450);
+ assert.equal(moneyPublic.data.money.undisclosedMinor,1450);
+ assert.match(moneyPublic.data.money.disclaimer,/No payouts/);
+ assert.equal((await call('/api/public/suppliers')).data.suppliers.length,0);
+ const privateSupplier=await call('/api/suppliers/'+supplier.data.id+'/public-profile',{token:cookie});
+ assert.equal(privateSupplier.code,200);assert.equal(privateSupplier.data.profile,null);
+ assert.equal((await call('/api/suppliers/'+supplier.data.id+'/public-profile',{method:'POST',token:cookie,body:{
+  description:'Source disclosed voluntarily',categories:'bags',fulfillmentNotes:'Declared only',publicConsent:true
+ }})).code,200);
+ const supplierDirectory=await call('/api/public/suppliers');
+ assert.equal(supplierDirectory.code,200);assert.equal(supplierDirectory.data.suppliers.length,1);
+ assert.equal(supplierDirectory.data.suppliers[0].name,'Sample Supplier');
+ assert.equal(JSON.stringify(supplierDirectory.data).includes('risk_notes'),false);
+ const impact=await call('/api/stores/'+storeId+'/impact',{token:cookie});
+ assert.equal(impact.code,200);assert.equal(impact.data.impact.products,1);
+ assert.equal(impact.data.impact.publicMoneyDisclosures,1);
+ assert.equal(impact.data.impact.optedInSuppliers,1);
+ assert.equal('ethicalScore' in impact.data.impact,false);
  assert.equal((await call('/api/admin/evidence/'+ev.data.id+'/review',{method:'POST',token:cookie,body:{status:'independently_verified'}})).code,403);
  const listing=await call('/api/listings',{method:'POST',token:cookie,body:{productId,channel:'ebay'}});
  assert.equal(listing.code,201);assert.equal(listing.data.status,'needs_connection');
@@ -102,6 +143,9 @@ try{
  const other=await call('/api/auth/register',{method:'POST',body:{email:'other-'+crypto.randomUUID()+'@example.test',password:'anotherlongpassphrase2026'}});
  assert.equal(other.code,201);const otherCookie=other.headers.get('set-cookie')?.split(';')[0];
  assert.equal((await call('/api/products?storeId='+storeId,{token:otherCookie})).code,403);
+ assert.equal((await call('/api/products/'+productId+'/money',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/stores/'+storeId+'/impact',{token:otherCookie})).code,403);
+ assert.equal((await call('/api/suppliers/'+supplier.data.id+'/public-profile',{token:otherCookie})).code,403);
  assert.equal((await call('/api/reports?storeId='+storeId,{token:otherCookie})).code,403);
  assert.equal((await call('/api/commerce/stores/'+storeId+'/compliance',{token:otherCookie})).code,403);
  assert.equal((await call('/api/commerce/stores/'+storeId+'/orders',{token:otherCookie})).code,403);

@@ -3,6 +3,8 @@ import {throttle} from './abuse';
 import {CommerceEnv,checkoutConfigured,stripeKeyMode} from './commercial-utils';
 import {commerceRoutes,scheduledCommerce} from './commercial-router';
 import {safeSlug,cleanText,safeHttpsUrl,moneyMinor,isKnownFacet,isKnownStage,traceCoverage,exportCsv} from './ethics';
+import {isMoneyCategory,disclosureBreakdown,impactFromRecords} from './transparency';
+import qrcode from 'qrcode-generator';
 
 const id=()=>crypto.randomUUID();
 const str=(v:unknown,max=240)=>cleanText(v,max);
@@ -52,13 +54,19 @@ async function sendPassport(env:Env,productId:string,publicOnly=true):Promise<Re
  ELSE e.status END AS evidence_status FROM trace_events t LEFT JOIN evidence e ON e.id=t.evidence_id WHERE t.product_id=? ORDER BY t.happened_at ASC`).bind(productId).all()
  ]);
  const trace=events.results||[];
- return json({product:p,claims:claims.results||[],events:trace,coverage:traceCoverage(trace.map((e:any)=>String(e.stage)))});
+ // Private drafts never leak; public passports only expose individual
+ // merchant-consented cost declarations. These are NOT verified split payments.
+ const money=await env.DB.prepare('SELECT category,amount_minor,note,evidence_url,public_consent FROM product_money_disclosures WHERE product_id=?'+(publicOnly?' AND public_consent=1':'')+' ORDER BY category')
+  .bind(productId).all();
+ return json({product:p,claims:claims.results||[],events:trace,coverage:traceCoverage(trace.map((e:any)=>String(e.stage))),
+  money:disclosureBreakdown(Number(p.price_minor),money.results as any||[])});
+
 }
 async function api(req:Request,env:Env):Promise<Response>{
  const u=new URL(req.url),path=u.pathname,method=req.method;
  if(path==='/api/health')return json({ok:true,service:'ethical-commerce',payments:(checkoutConfigured(env as CommerceEnv)?'configuration-enabled':'disabled'),paymentMode:(checkoutConfigured(env as CommerceEnv)?stripeKeyMode((env as CommerceEnv).STRIPE_SECRET_KEY):'none'),external_publishing:((env as CommerceEnv).PUBLISHING_ENABLED==='true'?'configuration-enabled':'disabled')});
  if(path==='/api/ready'&&method==='GET'){
-  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters','merchant_compliance','orders','order_items','email_challenges','independent_assessments','channel_connections','supplier_order_settings','purchase_orders','purchase_order_items','notification_outbox','payment_incidents']){
+  try{for(const table of ['users','stores','products','suppliers','passport_claims','trace_events','abuse_counters','merchant_compliance','orders','order_items','email_challenges','independent_assessments','channel_connections','supplier_order_settings','purchase_orders','purchase_order_items','notification_outbox','payment_incidents','product_money_disclosures','supplier_public_profiles']){
    const result=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(table).first();
    if(!result)throw Error('Missing schema');
   }
@@ -79,6 +87,31 @@ async function api(req:Request,env:Env):Promise<Response>{
   if(!store)return error('Store not found',404);
   const products=await env.DB.prepare("SELECT id,name,description,category,price_minor,currency,stock,image_url FROM products WHERE store_id=? AND status='published' ORDER BY updated_at DESC LIMIT 100").bind((store as any).id).all();
   return json({store,products:products.results||[]});
+ }
+ if(method==='GET'&&path==='/api/public/suppliers'){
+  const q=str(u.searchParams.get('q'),80);
+  // Only opt-in listings. Never expose private risk notes, email addresses,
+  // ordering contacts or seller-held supplier documents without consent.
+  const result=await env.DB.prepare(`SELECT s.id,s.name,s.country,s.website,sp.description,sp.categories,sp.evidence_url,sp.fulfillment_notes,sp.evidence_status,st.name AS store_name
+   FROM supplier_public_profiles sp JOIN suppliers s ON sp.supplier_id=s.id
+   JOIN stores st ON st.id=sp.store_id WHERE sp.public_consent=1
+   AND (?='' OR s.name LIKE ? OR s.country LIKE ? OR sp.categories LIKE ?)
+   ORDER BY sp.updated_at DESC LIMIT 80`).bind(q,'%'+q+'%','%'+q+'%','%'+q+'%').all();
+  return json({suppliers:result.results||[],notice:'Opted-in listings are seller declarations, not vetted suppliers or independent certifications.'});
+ }
+ const qrRoute=path.match(/^\/api\/public\/products\/([a-f0-9-]{36})\/qr\.svg$/);
+ if(method==='GET'&&qrRoute){
+  const p=await env.DB.prepare("SELECT id FROM products WHERE id=? AND status='published'").bind(qrRoute[1]).first();
+  if(!p)return error('Product not found',404);
+  const publicUrl=new URL('/product/'+qrRoute[1],req.url).href;
+  const qr=qrcode(0,'M');
+  qr.addData(publicUrl,'Byte');
+  qr.make();
+  return new Response(qr.createSvgTag({cellSize:5,margin:16,scalable:true}),{
+   status:200,
+   headers:{'content-type':'image/svg+xml; charset=utf-8','cache-control':'no-store',
+    'x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"}
+  });
  }
  const pubproduct=path.match(/^\/api\/public\/products\/([a-f0-9-]{36})$/);
  if(method==='GET'&&pubproduct)return sendPassport(env,pubproduct[1]);
@@ -122,6 +155,69 @@ async function api(req:Request,env:Env):Promise<Response>{
   const token=req.headers.get('cookie')?.match(/ec_session=([0-9a-f]{64})/)?.[1];
   if(token)await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await digest(token)).run();
   return json({ok:true},200,{'set-cookie':'ec_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'});
+ }
+ // Transparency data is scoped to a store or product and requires membership.
+ const impactRoute=path.match(/^\/api\/stores\/([a-f0-9-]{36})\/impact$/);
+ if(method==='GET'&&impactRoute){
+  const sid=impactRoute[1];
+  if(!await access(env,user,sid))return error('Forbidden',403);
+  const row=await env.DB.prepare(`SELECT
+   (SELECT COUNT(*) FROM products WHERE store_id=?) AS products,
+   (SELECT COUNT(*) FROM trace_events WHERE store_id=?) AS trace_events,
+   (SELECT COUNT(*) FROM evidence WHERE store_id=? AND product_id IS NOT NULL AND status!='rejected') AS linked_evidence,
+   (SELECT COUNT(*) FROM passport_claims WHERE store_id=?) AS claims,
+   (SELECT COUNT(*) FROM independent_assessments ia JOIN evidence e ON e.id=ia.evidence_id JOIN approved_verifiers av ON av.id=ia.verifier_id WHERE e.store_id=? AND av.status='approved' AND ia.verdict='verified' AND (ia.valid_until IS NULL OR ia.valid_until>=date('now'))) AS independent_assessments,
+   (SELECT COUNT(*) FROM product_money_disclosures WHERE store_id=? AND public_consent=1) AS published_disclosures,
+   (SELECT COUNT(*) FROM supplier_public_profiles WHERE store_id=? AND public_consent=1) AS public_suppliers,
+   (SELECT COUNT(*) FROM complaints WHERE store_id=? AND status!='resolved') AS unresolved_reports`).bind(sid,sid,sid,sid,sid,sid,sid,sid).first<Record<string,number>>();
+  return json({impact:impactFromRecords(row||{})});
+ }
+ const moneyRoute=path.match(/^\/api\/products\/([a-f0-9-]{36})\/money$/);
+ if(moneyRoute){
+  const p=await storedProduct(env,user,moneyRoute[1],method!=='GET');
+  if(!p)return error('Forbidden',403);
+  const sid=String(p.store_id);
+  if(method==='GET'){
+   const rows=await env.DB.prepare('SELECT category,amount_minor,note,evidence_url,public_consent,evidence_status,updated_at FROM product_money_disclosures WHERE product_id=? ORDER BY category').bind(p.id).all();
+   return json({money:disclosureBreakdown(Number(p.price_minor),rows.results as any||[]),records:rows.results||[],
+    notice:'Confidential until the seller explicitly opts in per category. Seller-entered values are not independently verified.'});
+  }
+  if(method==='POST'){
+   const limited=await throttle(req,env,'transparency-write',user.id,30,3600);if(limited)return limited;
+   const b=await readBody(req),category=str(b.category,30),amount=moneyMinor(b.amountMinor),
+    note=str(b.note,500),url=safeHttpsUrl(b.evidenceUrl);
+   if(!isMoneyCategory(category)||amount===null||amount>100000000)return error('A valid cost category and non-negative amount are required',400);
+   if(b.evidenceUrl&&!url)return error('Evidence link must use a valid HTTPS URL',400);
+   if(b.publicConsent!==true&&b.publicConsent!==false)return error('Explicit public disclosure consent is required',400);
+   await env.DB.prepare(`INSERT INTO product_money_disclosures(id,store_id,product_id,category,amount_minor,note,evidence_url,public_consent)
+    VALUES(?,?,?,?,?,?,?,?)
+    ON CONFLICT(product_id,category) DO UPDATE SET amount_minor=excluded.amount_minor,note=excluded.note,evidence_url=excluded.evidence_url,public_consent=excluded.public_consent,updated_at=datetime('now')`)
+    .bind(id(),sid,p.id,category,amount,note,url,b.publicConsent?1:0).run();
+   await audit(env.DB,sid,user.id,'disclose','money',String(p.id));
+   return json({saved:true,merchantDeclared:true,public:b.publicConsent,noPayoutProcessed:true},201);
+  }
+ }
+ const directoryRoute=path.match(/^\/api\/suppliers\/([a-f0-9-]{36})\/public-profile$/);
+ if(directoryRoute){
+  const supplier=await env.DB.prepare('SELECT id,store_id FROM suppliers WHERE id=?').bind(directoryRoute[1]).first<{id:string;store_id:string}>();
+  if(!supplier||!await access(env,user,supplier.store_id,method!=='GET'))return error('Forbidden',403);
+  if(method==='GET'){
+   const profile=await env.DB.prepare('SELECT description,categories,evidence_url,fulfillment_notes,public_consent,evidence_status,updated_at FROM supplier_public_profiles WHERE supplier_id=?').bind(supplier.id).first();
+   return json({profile:profile||null,notice:'Only merchant-approved opt-in details are shown publicly.'});
+  }
+  if(method==='POST'){
+   const limited=await throttle(req,env,'transparency-write',user.id,30,3600);if(limited)return limited;
+   const b=await readBody(req),description=str(b.description,1000),
+    categories=str(b.categories,200),fulfillment=str(b.fulfillmentNotes,400),url=safeHttpsUrl(b.evidenceUrl);
+   if(b.evidenceUrl&&!url)return error('Use an HTTPS evidence link',400);
+   if(b.publicConsent!==true&&b.publicConsent!==false)return error('Explicit supplier-directory consent required',400);
+   await env.DB.prepare(`INSERT INTO supplier_public_profiles(supplier_id,store_id,description,categories,evidence_url,fulfillment_notes,public_consent)
+    VALUES(?,?,?,?,?,?,?) ON CONFLICT(supplier_id) DO UPDATE SET description=excluded.description,categories=excluded.categories,evidence_url=excluded.evidence_url,
+    fulfillment_notes=excluded.fulfillment_notes,public_consent=excluded.public_consent,updated_at=datetime('now')`)
+    .bind(supplier.id,supplier.store_id,description,categories,url,fulfillment,b.publicConsent?1:0).run();
+   await audit(env.DB,supplier.store_id,user.id,'publish','supplier_profile',supplier.id);
+   return json({saved:true,public:b.publicConsent,independentlyVerified:false});
+  }
  }
  if(method==='GET'&&(path==='/api/me'||path==='/api/stores')){
   const result=await env.DB.prepare('SELECT s.id,s.slug,s.name,s.description,s.theme_color,m.role FROM stores s JOIN store_members m ON s.id=m.store_id WHERE m.user_id=? ORDER BY s.created_at DESC').bind(user.id).all();
