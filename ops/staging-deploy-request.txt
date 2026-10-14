@@ -36,3 +36,5 @@ Retry requested after deploy-time Cloudflare 504s. Workflow now includes three b
 2026-10-13: Deploy PR #31 distinct destination mask words ETHICAL/TRUST/IMPACT/DISCOVER/CREATE/BUILD/HONEST and consistent black/lime seller, standards, admin and account UI. Preserve current /shop/*, /product/*, /order-result buyer visual design and disabled payment/sales/publishing flags. Staging only.
 
 2026-10-14: Deploy PR #32 living supply chain, interactive money trail, opt-in supplier directory, guided store creator, published product QR passports, evidence/activity dashboard and staged launch checklist. Apply migration 0007 to STAGING ONLY. Leave live payments, publishing, fulfilment automation, rewards OFF.
+
+2026-10-14: Deploy PR #34 tighter independent-evidence counter to isolated staging. Exclude revoked/expired/outdated assessments from impact. Preserve disabled trading gates and prior transparency suite.
