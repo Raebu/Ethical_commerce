@@ -661,10 +661,7 @@ body[data-ec-theme="dark"] .ec-dark-landing{padding-bottom:clamp(50px,8vw,110px)
 .ec-x-check>span{color:#d3ff5c;font-size:1.4rem}
 .ec-x-check strong{flex:1}
 .ec-x-check small{color:#c5d9b6}
-/* Product passports keep their original buyer/shop styling but the extra
-   interactive panels use a deliberately contrasting disclosure workspace. */
-body[data-ec-theme="shop"] .ec-x-journey,
-body[data-ec-theme="shop"] .ec-x-money{margin:25px auto}
+/* The customer-facing shop's original CSS remains untouched. */
 @media(max-width:1080px){.ec-x-track{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:780px){
  .ec-x-wizard-grid,.ec-x-supplier-results{grid-template-columns:1fr}
