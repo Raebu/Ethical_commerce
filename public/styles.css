@@ -679,3 +679,6 @@ body[data-ec-theme="dark"] .ec-dark-landing{padding-bottom:clamp(50px,8vw,110px)
  .site-header,.site-footer,.ec-x-passport-tools,.ec-x-slider,.ec-x-search,.toast{display:none!important}
  .ec-x-stage,.ec-x-journey,.ec-x-money{break-inside:avoid;background:white;color:black;border-color:#bbb}
 }
+
+.ec-x-qr{width:112px;height:112px;padding:7px;object-fit:contain;border-radius:10px;background:white;border:1px solid #d2d8cb}
+@media print{.ec-x-qr{width:120px;height:120px;print-color-adjust:exact}.ec-x-passport-tools{display:flex!important}.ec-x-passport-tools button,.ec-x-passport-tools a{display:none!important}}
