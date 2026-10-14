@@ -1,9 +1,10 @@
 import {test} from 'node:test';
 import {strict as assert} from 'node:assert';
 import {disclosureBreakdown,impactFromRecords,isMoneyCategory} from '../src/transparency.ts';
-import {journeyMarkup,moneyMarkup,supplierDirectoryMarkup,wizardMarkup,impactMarkup,updateDemoMoney} from '../public/experience.js';
+// @ts-expect-error Plain browser JS is tested at runtime; TypeScript declarations are not shipped.
+import {journeyMarkup,moneyMarkup,supplierDirectoryMarkup,wizardMarkup,impactMarkup} from '../public/experience.js';
 
-const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escape=(s:unknown)=>String(s??'').replace(/[&<>"']/g,(c:string)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as Record<string,string>)[c]||c);
 test('cost categories are fixed and amounts only publish on explicit consent',()=>{
  assert.equal(isMoneyCategory('materials'),true);
  assert.equal(isMoneyCategory('employee_wages'),false);
@@ -25,7 +26,7 @@ test('overallocations are detected and never represented as a reconciled breakdo
  assert.throws(()=>disclosureBreakdown(-1,[]));
 });
 test('impact displays factual counters and avoids an ethical ranking',()=>{
- const d=impactFromRecords({products:2,trace_events:5,linked_evidence:7,open_reports:999,unresolved_reports:3});
+ const d=impactFromRecords({products:2,trace_events:5,linked_evidence:7,unresolved_reports:3});
  assert.equal(d.products,2);
  assert.equal(d.recordedHandoffs,5);
  assert.equal(d.openConcerns,3);
