@@ -77,12 +77,19 @@ try{
  const product=await call('/api/products',{method:'POST',token:cookie,body:{storeId,name:'Cotton Tote',priceMinor:1900,stock:5,supplierId:supplier.data.id}});
  assert.equal(product.code,201,JSON.stringify(product.data));const productId=product.data.id;
  assert.equal((await call('/api/public/products/'+productId)).code,404);
+ assert.equal((await call('/api/public/products/'+productId+'/qr.svg')).code,404,'Unpublished product QR must be unavailable');
  const ev=await call('/api/evidence',{method:'POST',token:cookie,body:{productId,title:'Origin declaration',issuer:'Merchant',sourceUrl:'https://example.org/source'}});
  assert.equal(ev.code,201);assert.equal(ev.data.status,'supplier_declared');
  assert.equal((await call('/api/claims',{method:'POST',token:cookie,body:{productId,facet:'origin',statement:'Supplier declares UK origin',evidenceId:ev.data.id}})).code,201);
  assert.equal((await call('/api/trace',{method:'POST',token:cookie,body:{productId,stage:'source',actorName:'Supplier',happenedAt:'2026-10-10',evidenceId:ev.data.id}})).code,201);
  assert.equal((await call('/api/products/'+productId,{method:'PATCH',token:cookie,body:{status:'published'}})).code,200);
  const pub=await call('/api/public/products/'+productId);assert.equal(pub.code,200);
+ const qr=await call('/api/public/products/'+productId+'/qr.svg');
+ assert.equal(qr.code,200);
+ assert.match(qr.headers.get('content-type')||'',/image\/svg\+xml/);
+ assert.match(qr.data,/<svg/);
+ assert.doesNotMatch(qr.data,/<script/);
+ assert.equal(qr.headers.get('cache-control'),'no-store');
  assert.equal(pub.data.claims[0].evidence_status,'supplier_declared');assert.equal(pub.data.coverage.covered,1);
  assert.ok(pub.data.coverage.missing.includes('manufacture'));
  // Money and supplier directory stay private until a merchant explicitly opts in.
