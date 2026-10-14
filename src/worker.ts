@@ -4,6 +4,7 @@ import {CommerceEnv,checkoutConfigured,stripeKeyMode} from './commercial-utils';
 import {commerceRoutes,scheduledCommerce} from './commercial-router';
 import {safeSlug,cleanText,safeHttpsUrl,moneyMinor,isKnownFacet,isKnownStage,traceCoverage,exportCsv} from './ethics';
 import {isMoneyCategory,disclosureBreakdown,impactFromRecords} from './transparency';
+import qrcode from 'qrcode-generator';
 
 const id=()=>crypto.randomUUID();
 const str=(v:unknown,max=240)=>cleanText(v,max);
@@ -97,6 +98,20 @@ async function api(req:Request,env:Env):Promise<Response>{
    AND (?='' OR s.name LIKE ? OR s.country LIKE ? OR sp.categories LIKE ?)
    ORDER BY sp.updated_at DESC LIMIT 80`).bind(q,'%'+q+'%','%'+q+'%','%'+q+'%').all();
   return json({suppliers:result.results||[],notice:'Opted-in listings are seller declarations, not vetted suppliers or independent certifications.'});
+ }
+ const qrRoute=path.match(/^\/api\/public\/products\/([a-f0-9-]{36})\/qr\.svg$/);
+ if(method==='GET'&&qrRoute){
+  const p=await env.DB.prepare("SELECT id FROM products WHERE id=? AND status='published'").bind(qrRoute[1]).first();
+  if(!p)return error('Product not found',404);
+  const publicUrl=new URL('/product/'+qrRoute[1],req.url).href;
+  const qr=qrcode(0,'M');
+  qr.addData(publicUrl,'Byte');
+  qr.make();
+  return new Response(qr.createSvgTag({cellSize:5,margin:16,scalable:true}),{
+   status:200,
+   headers:{'content-type':'image/svg+xml; charset=utf-8','cache-control':'no-store',
+    'x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"}
+  });
  }
  const pubproduct=path.match(/^\/api\/public\/products\/([a-f0-9-]{36})$/);
  if(method==='GET'&&pubproduct)return sendPassport(env,pubproduct[1]);
