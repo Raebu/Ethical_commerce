@@ -166,7 +166,16 @@ async function api(req:Request,env:Env):Promise<Response>{
    (SELECT COUNT(*) FROM trace_events WHERE store_id=?) AS trace_events,
    (SELECT COUNT(*) FROM evidence WHERE store_id=? AND product_id IS NOT NULL AND status!='rejected') AS linked_evidence,
    (SELECT COUNT(*) FROM passport_claims WHERE store_id=?) AS claims,
-   (SELECT COUNT(*) FROM independent_assessments ia JOIN evidence e ON e.id=ia.evidence_id JOIN approved_verifiers av ON av.id=ia.verifier_id WHERE e.store_id=? AND av.status='approved' AND ia.verdict='verified' AND (ia.valid_until IS NULL OR ia.valid_until>=date('now'))) AS independent_assessments,
+   (SELECT COUNT(DISTINCT e.id) FROM evidence e
+    JOIN independent_assessments ia ON ia.evidence_id=e.id
+    JOIN approved_verifiers av ON av.id=ia.verifier_id
+    WHERE e.store_id=? AND e.status='independently_verified'
+    AND av.status='approved' AND ia.verdict='verified'
+    AND ia.valid_until>=date('now')
+    AND ia.id=(SELECT recent.id FROM independent_assessments recent
+      WHERE recent.evidence_id=e.id
+      ORDER BY recent.reviewed_at DESC,recent.rowid DESC LIMIT 1)
+   ) AS independent_assessments,
    (SELECT COUNT(*) FROM product_money_disclosures WHERE store_id=? AND public_consent=1) AS published_disclosures,
    (SELECT COUNT(*) FROM supplier_public_profiles WHERE store_id=? AND public_consent=1) AS public_suppliers,
    (SELECT COUNT(*) FROM complaints WHERE store_id=? AND status!='resolved') AS unresolved_reports`).bind(sid,sid,sid,sid,sid,sid,sid,sid).first<Record<string,number>>();

@@ -85,3 +85,13 @@ test('frontend wiring keeps commercial launch gates intact',async()=>{
  assert.match(schema,/public_consent INTEGER NOT NULL DEFAULT 0/);
  assert.doesNotMatch(schema,/CREATE TABLE\s+payments\s*\(/i);
 });
+
+test('impact counts only latest active independent findings, never stale or revoked ones',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const code=readFileSync(new URL('../src/worker.ts',import.meta.url),'utf8');
+ assert.match(code,/COUNT\(DISTINCT e\.id\)/);
+ assert.match(code,/e\.status='independently_verified'/);
+ assert.match(code,/ia\.valid_until>=date\('now'\)/);
+ assert.match(code,/ia\.id=\(SELECT recent\.id FROM independent_assessments recent/);
+ assert.match(code,/recent\.reviewed_at DESC,recent\.rowid DESC LIMIT 1/);
+});
